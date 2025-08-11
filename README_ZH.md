@@ -1,24 +1,22 @@
 # fxjson
 
-A zero-allocation, high-performance JSON parser for Go, focusing on **fast path access** and **ultra-low memory overhead**.
+一个零分配、高性能的 Go 语言 JSON 解析器，聚焦**快速路径访问**与**极低内存开销**。
 
-[📄 中文文档 / Chinese Documentation](README_ZH.md)
-
-> Goal: Maintain API simplicity while minimizing latency and allocations, tailored for high-QPS, low-jitter scenarios.
+> 目标：在保持 API 易用的同时，压低延迟与分配，适配高 QPS、低抖动场景。
 
 ---
 
-## ✨ Features
+## ✨ 特性
 
-* **0 Allocation**: Core APIs such as `Get` / `GetByPath` / `Len` / `Index` are zero-allocation.
-* **Unified Value Receivers**: Complies with Go best practices to avoid value/pointer receiver ambiguity and escape analysis pitfalls.
-* **Path Direct Access**: No intermediate tree building; scans raw byte streams directly and skips irrelevant fields.
-* **Specialized Number Parsing**: Hand-written `Int/Uint/Float/Bool` implementations without `strconv`, with extremely short call stacks.
-* **O(1) Array Indexing**: Uses `(data pointer + slice range)` global lock-free cache for extremely fast repeated indexing.
+* **0 分配**：`Get` / `GetByPath` / `Len` / `Index` 等核心路径零分配。
+* **值接收器统一**：遵循 Go 规范，避免值/指针混用导致的语义歧义与逃逸。
+* **路径直达**：不构建中间树，按字节流直扫，跳过非目标字段。
+* **特化数值解析**：手写 `Int/Uint/Float/Bool`，不依赖 `strconv`，调用栈极短。
+* **数组下标 O(1)**：基于 `(data pointer + slice range)` 的全局无锁缓存，重复索引极快。
 
 ---
 
-## 🚀 Installation
+## 🚀 安装
 
 ```bash
 go get github.com/icloudza/fxjson
@@ -26,7 +24,7 @@ go get github.com/icloudza/fxjson
 
 ---
 
-## 🔧 Quick Start
+## 🔧 快速开始
 
 ```go
 package main
@@ -42,23 +40,19 @@ func main() {
   n := fxjson.FromBytes(b)
   name := n.Get("data").Get("user").Get("name").String() // "Alice"
   fmt.Println("name:", name)
-
   age, _ := n.GetByPath("data.user.age").Int() // 30
   fmt.Println("age:", age)
-
   s1 := n.GetByPath("data.user.scores").Index(1).NumStr() // "88"
   fmt.Println("s1:", s1)
-
   ln := n.GetByPath("data.user.scores").Len() // 3
   fmt.Println("ln:", ln)
-
   keys := n.Get("data").Get("user").Keys() // [][]byte{"name","age","scores"}
   for i, k := range keys {
     fmt.Printf("user index %d %s \n", i, string(k))
   }
 }
 
-//result:
+//结果输出：
 //name: Alice
 //age: 30
 //s1: 88
@@ -68,27 +62,11 @@ func main() {
 //user index 2 scores 
 ```
 
-**Output**
-
-```
-name: Alice
-age: 30
-s1: 88
-ln: 3
-user index 0 name
-user index 1 age
-user index 2 scores
-```
-
 ---
 
-## 📊 Benchmark (Apple M4 Pro)
+## 📊 基准（Apple M4 Pro）
 
-Command:
-
-```bash
-go test -bench . -benchmem -cpuprofile=cpu.out
-```
+> 命令：`go test -bench . -benchmem -cpuprofile=cpu.out`
 
 | Benchmark          | fxjson ns/op | fxjson B/op | fxjson allocs/op | gjson ns/op | gjson B/op | gjson allocs/op |
 |--------------------|--------------|-------------|------------------|-------------|------------|-----------------|
@@ -106,97 +84,92 @@ go test -bench . -benchmem -cpuprofile=cpu.out
 | BenchmarkIsNull    | 0.2247       | 0           | 0                | 0.2266      | 0          | 0               |
 | BenchmarkDecode    | 129.8        | 368         | 5                | 108.5       | 0          | 0               |
 
----
+### 火焰图（pprof）
 
-## 🔥 Flamegraph (pprof)
+> 已生成：`flame.png`
 
-Generated:
-
-```
-flame.png
-```
 ![CPU Flamegraph](flame.png)
 
-### Reproduce
+#### 复现命令
 
 ```bash
-# Run benchmark and generate CPU profile
+# 运行基准并产出 CPU Profile
 go test -bench . -benchmem -cpuprofile=cpu.out
 
-# Generate SVG (best readability)
+# 生成 SVG（可读性最好）
 go tool pprof -svg ./fxjson.test cpu.out > flame.svg
 
-# Optionally PNG/JPG:
-# 1) Go 1.22+ try -png (if supported)
+# 需要 PNG/JPG 时：
+# 1) Go 1.22+ 试试 -png（若支持）
 # go tool pprof -png ./fxjson.test cpu.out > flame.png
-# 2) Convert with ImageMagick
+# 2) 或者用 ImageMagick 转换
 # convert flame.svg flame.png
 
-# Web interface (interactive)
+# Web 界面（交互查看）
 go tool pprof -http=:8080 ./fxjson.test cpu.out
 ```
 
 ---
 
-## 🆚 Advantages over gjson
+## 🆚 与 gjson 的差异亮点
 
-* **Lower GC noise**: Core APIs are zero-allocation; flamegraphs show almost no `mallocgc`/`makeslice`.
-* **Shallower stack & focused hotspots**: `findObjectField` / `skipValueFast` are single hotspots, making further optimization easier.
-* **Optimized path parsing**: `GetByPath` directly scans bytes, avoiding generic branches and handling complex objects efficiently.
-* **Custom integer/float parsing**: No `strconv`, short execution path, higher throughput.
-* **O(1) Array Indexing**: Repeated access to the same array is significantly faster.
+* **GC 噪音更低**：核心 API 0 alloc，火焰图几乎看不到 `mallocgc`/`makeslice`。
+* **栈更浅，热点更集中**：`findObjectField` / `skipValueFast` 等成为单点热点，易于继续优化。
+* **路径解析特化**：`GetByPath` 直扫字节流，少通用分支；复杂对象也能快速跳值。
+* **整数/浮点解析自研**：不走 `strconv`，短路径、高吞吐。
+* **Index O(1)**：对同一数组多次索引，吞吐显著优于通用遍历。
 
-> Suitable for: API gateways, log/metrics ingestion, real-time risk control, trading/matching systems.
+> 适用：API 网关、日志/埋点采集、实时风控、撮合/竞价等延迟敏感业务。
 
 ---
 
-## 📚 API Overview
+## 📚 API 速览
 
 ```go
 n := fxjson.FromBytes(data)
 
-// Field / path access
+// 取字段 / 路径
 n.Get("data")
 n.GetByPath("a.b[3].c")
 
-// Arrays
+// 数组
 n.Get("arr").Len()
 n.Get("arr").Index(0)
 
-// Primitive types
+// 基本类型
 n.Get("s").String()
 n.Get("i").Int()
 n.Get("u").Uint()
 n.Get("f").Float()
 n.Get("b").Bool()
 
-// Other utilities
+// 其他
 n.Exists()
 n.IsNull()
-n.NumStr() // raw numeric string (zero-alloc)
-n.Raw()    // raw JSON slice (zero-copy)
+n.NumStr()   // 数字原文字符串（零分配）
+n.Raw()      // 原始切片视图（零拷贝）
 
-// Decode to any (quick & easy)
+// 解码为 any（快速/简易）：
 var v any
 _ = n.Decode(&v)
 ```
 
 ---
 
-## ⚠️ Notes
+## ⚠️ 注意事项
 
-* Input is assumed to be **valid JSON**; the parser is optimized for performance, not heavy error handling.
-* Global array index cache uses `sync.Map` keyed by `(data pointer + range)`; suitable for long-lived raw byte reuse (e.g., log batches, bulk processing).
-* Unified value receivers: Does not modify `Node` state, safe for chained calls and concurrent reads.
+* 约定输入为**合法 JSON**；解析器按高性能路径编写，不做重型容错。
+* 全局数组下标缓存使用 `sync.Map`，Key 为 `(data pointer + range)`；
+  适合长生命周期的原始字节复用场景（日志批/批量处理）。
+* 统一值接收器：不修改 `Node` 自身状态，可无脑链式调用与并发读。
 
 ---
 
-## 📦 Compatibility
-
+## 📦 兼容性
 * Go 1.21+
 
 ---
 
-## 📄 License
+## 📄 许可
 
 MIT
