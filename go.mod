@@ -1,4 +1,4 @@
-module fxjson
+module github.com/icloudza/fxjson
 
 go 1.24
 
