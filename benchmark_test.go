@@ -95,7 +95,7 @@ func BenchmarkBool_gjson(b *testing.B) {
 func BenchmarkString_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON).Get("name")
 	for i := 0; i < b.N; i++ {
-		_ = node.String()
+		_, _ = node.String()
 	}
 }
 
@@ -109,7 +109,7 @@ func BenchmarkString_gjson(b *testing.B) {
 func BenchmarkNumStr_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON).Get("score")
 	for i := 0; i < b.N; i++ {
-		_ = node.NumStr()
+		_, _ = node.NumStr()
 	}
 }
 

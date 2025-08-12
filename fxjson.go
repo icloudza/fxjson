@@ -17,7 +17,7 @@ type Node struct {
 	raw   []byte
 	start int
 	end   int
-	typ   byte
+	typ   byte // 'o' 'a' 's' 'n' 'b' 'l'
 }
 
 type NodeType byte
@@ -304,6 +304,7 @@ func (n Node) Index(i int) Node {
 }
 
 // ===== 跳值 / 解析 =====
+// 替换原函数：更稳健的越界处理与转义跳过
 func skipValueFast(data []byte, pos int, end int) int {
 	if pos >= end {
 		return pos
@@ -312,64 +313,196 @@ func skipValueFast(data []byte, pos int, end int) int {
 	case '"':
 		pos++
 		for pos < end {
-			if data[pos] == '"' {
+			switch data[pos] {
+			case '"':
 				return pos + 1
-			}
-			if data[pos] == '\\' {
-				pos += 2
-			} else {
+			case '\\':
+				// 处理转义，确保不越界；对 \uXXXX 做快速跳过
+				if pos+1 >= end {
+					return end
+				}
+				if data[pos+1] == 'u' && pos+5 < end {
+					pos += 6 // \uXXXX
+				} else {
+					pos += 2 // \x
+				}
+			default:
 				pos++
 			}
 		}
+		return end
+
 	case '{':
 		pos++
 		depth := 1
 		for pos < end && depth > 0 {
-			if data[pos] == '"' {
+			switch data[pos] {
+			case '"':
+				// 跳过字符串（含转义与 \uXXXX）
 				pos++
-				for pos < end && data[pos] != '"' {
-					if data[pos] == '\\' {
+				for pos < end {
+					switch data[pos] {
+					case '"':
+						pos++
+						goto contObj // 结束当前字符串，继续对象扫描
+					case '\\':
+						if pos+1 >= end {
+							return end
+						}
+						if data[pos+1] == 'u' && pos+5 < end {
+							pos += 6
+						} else {
+							pos += 2
+						}
+					default:
 						pos++
 					}
-					pos++
 				}
-			} else if data[pos] == '{' {
+				return end
+			case '{':
 				depth++
-			} else if data[pos] == '}' {
+				pos++
+			case '}':
 				depth--
+				pos++
+			default:
+				pos++
 			}
-			pos++
 		}
 		return pos
+	contObj:
+		// 继续对象扫描
+		for pos < end && depth > 0 {
+			switch data[pos] {
+			case '"':
+				pos++
+				for pos < end {
+					switch data[pos] {
+					case '"':
+						pos++
+						goto contObj
+					case '\\':
+						if pos+1 >= end {
+							return end
+						}
+						if data[pos+1] == 'u' && pos+5 < end {
+							pos += 6
+						} else {
+							pos += 2
+						}
+					default:
+						pos++
+					}
+				}
+				return end
+			case '{':
+				depth++
+				pos++
+			case '}':
+				depth--
+				pos++
+			default:
+				pos++
+			}
+		}
+		return pos
+
 	case '[':
 		pos++
 		depth := 1
 		for pos < end && depth > 0 {
-			if data[pos] == '"' {
+			switch data[pos] {
+			case '"':
+				// 跳过字符串（含转义与 \uXXXX）
 				pos++
-				for pos < end && data[pos] != '"' {
-					if data[pos] == '\\' {
+				for pos < end {
+					switch data[pos] {
+					case '"':
+						pos++
+						goto contArr
+					case '\\':
+						if pos+1 >= end {
+							return end
+						}
+						if data[pos+1] == 'u' && pos+5 < end {
+							pos += 6
+						} else {
+							pos += 2
+						}
+					default:
 						pos++
 					}
-					pos++
 				}
-			} else if data[pos] == '[' {
+				return end
+			case '[':
 				depth++
-			} else if data[pos] == ']' {
+				pos++
+			case ']':
 				depth--
+				pos++
+			default:
+				pos++
 			}
-			pos++
 		}
 		return pos
+	contArr:
+		for pos < end && depth > 0 {
+			switch data[pos] {
+			case '"':
+				pos++
+				for pos < end {
+					switch data[pos] {
+					case '"':
+						pos++
+						goto contArr
+					case '\\':
+						if pos+1 >= end {
+							return end
+						}
+						if data[pos+1] == 'u' && pos+5 < end {
+							pos += 6
+						} else {
+							pos += 2
+						}
+					default:
+						pos++
+					}
+				}
+				return end
+			case '[':
+				depth++
+				pos++
+			case ']':
+				depth--
+				pos++
+			default:
+				pos++
+			}
+		}
+		return pos
+
 	case 't':
-		return pos + 4
+		if pos+4 <= end {
+			return pos + 4
+		}
+		return end
 	case 'f':
-		return pos + 5
+		if pos+5 <= end {
+			return pos + 5
+		}
+		return end
 	case 'n':
-		return pos + 4
+		if pos+4 <= end {
+			return pos + 4
+		}
+		return end
 	default:
+		// number: [-] digits [ . digits ] [ e[+/-]digits ]
 		if data[pos] == '-' {
 			pos++
+			if pos >= end {
+				return end
+			}
 		}
 		for pos < end && data[pos] >= '0' && data[pos] <= '9' {
 			pos++
@@ -389,8 +522,8 @@ func skipValueFast(data []byte, pos int, end int) int {
 				pos++
 			}
 		}
+		return pos
 	}
-	return pos
 }
 
 func parseValueAt(data []byte, pos int, end int) Node {
@@ -678,11 +811,11 @@ func (n Node) Bool() (bool, error) {
 
 // NumStr 返回节点的数字原始字符串表示
 // 如果节点类型不是 JSON 数字或范围无效，则返回错误
-func (n Node) NumStr() string {
+func (n Node) NumStr() (string, error) {
 	if n.typ != 'n' || n.start >= n.end {
-		return ""
+		return "", errors.New("not a string")
 	}
-	return unsafe.String(&n.raw[n.start], n.end-n.start)
+	return unsafe.String(&n.raw[n.start], n.end-n.start), nil
 }
 
 // Raw 返回节点的原始 JSON 字节切片
@@ -698,7 +831,7 @@ func (n Node) Raw() []byte {
 
 // Exists 判断节点是否存在。
 // 若原始数据非空且起止位置有效，则返回 true，否则返回 false
-func (n Node) Exists() bool { return len(n.raw) > 0 && n.start >= 0 && n.end > n.start }
+func (n Node) Exists() bool { return len(n.raw) > 0 && n.start >= 0 && n.end > n.start && n.typ != 0 }
 
 // IsObject 判断节点是否为 JSON 对象
 func (n Node) IsObject() bool { return n.typ == 'o' }
