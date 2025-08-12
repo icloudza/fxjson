@@ -684,6 +684,7 @@ func (n Node) Raw() []byte {
 // ===== 统计 / Keys =====
 
 func (n Node) Len() int {
+	// 数组
 	if n.typ == 'a' {
 		pos := n.start
 		end := n.end
@@ -713,6 +714,7 @@ func (n Node) Len() int {
 		}
 		return count
 	}
+	// 对象
 	if n.typ == 'o' {
 		pos := n.start
 		end := n.end
@@ -762,6 +764,28 @@ func (n Node) Len() int {
 			}
 		}
 		return count
+	}
+	// 字符串
+	if n.typ == 's' {
+		start := n.start
+		end := n.end
+		// 找到第一个引号
+		for start < end && n.raw[start] != '"' {
+			start++
+		}
+		if start >= end {
+			return 0
+		}
+		start++
+		length := 0
+		for start < end && n.raw[start] != '"' {
+			if n.raw[start] == '\\' {
+				start++ // 跳过转义符
+			}
+			start++
+			length++
+		}
+		return length
 	}
 	return 0
 }
