@@ -441,15 +441,15 @@ func parseValueAt(data []byte, pos int, end int) Node {
 
 // String 返回节点的字符串值
 // 如果节点类型不是 JSON 字符串，或内容为空，则返回错误
-func (n Node) String() string {
+func (n Node) String() (string, error) {
 	if n.typ != 's' || n.start+1 >= n.end {
-		return ""
+		return "", errors.New("not a string")
 	}
 	bytes := n.raw[n.start+1 : n.end-1]
 	if len(bytes) == 0 {
-		return ""
+		return "", errors.New("empty string")
 	}
-	return unsafe.String(&bytes[0], len(bytes))
+	return unsafe.String(&bytes[0], len(bytes)), nil
 }
 
 // Int 返回节点的 int64 整数值
