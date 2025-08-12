@@ -1,9 +1,8 @@
 package fxjson
 
 import (
+	"encoding/json"
 	"testing"
-
-	"github.com/tidwall/gjson"
 )
 
 var sampleJSON = []byte(`{
@@ -22,7 +21,7 @@ var sampleJSON = []byte(`{
 	}
 }`)
 
-// ===== Get / GetPath =====
+// ===== Get =====
 func BenchmarkGet_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON)
 	for i := 0; i < b.N; i++ {
@@ -30,12 +29,15 @@ func BenchmarkGet_fxjson(b *testing.B) {
 	}
 }
 
-func BenchmarkGet_gjson(b *testing.B) {
+func BenchmarkGet_std(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = gjson.GetBytes(sampleJSON, "name")
+		var m map[string]any
+		_ = json.Unmarshal(sampleJSON, &m)
+		_ = m["name"]
 	}
 }
 
+// ===== GetPath =====
 func BenchmarkGetPath_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON)
 	for i := 0; i < b.N; i++ {
@@ -43,13 +45,15 @@ func BenchmarkGetPath_fxjson(b *testing.B) {
 	}
 }
 
-func BenchmarkGetPath_gjson(b *testing.B) {
+func BenchmarkGetPath_std(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = gjson.GetBytes(sampleJSON, "meta.nested.flag")
+		var m map[string]any
+		_ = json.Unmarshal(sampleJSON, &m)
+		_ = m["meta"].(map[string]any)["nested"].(map[string]any)["flag"]
 	}
 }
 
-// ===== Int / Float / Bool / String =====
+// ===== Int =====
 func BenchmarkInt_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON).Get("id")
 	for i := 0; i < b.N; i++ {
@@ -57,13 +61,15 @@ func BenchmarkInt_fxjson(b *testing.B) {
 	}
 }
 
-func BenchmarkInt_gjson(b *testing.B) {
-	r := gjson.GetBytes(sampleJSON, "id")
+func BenchmarkInt_std(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = r.Int()
+		var m map[string]any
+		_ = json.Unmarshal(sampleJSON, &m)
+		_ = int64(m["id"].(float64))
 	}
 }
 
+// ===== Float =====
 func BenchmarkFloat_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON).Get("score")
 	for i := 0; i < b.N; i++ {
@@ -71,13 +77,15 @@ func BenchmarkFloat_fxjson(b *testing.B) {
 	}
 }
 
-func BenchmarkFloat_gjson(b *testing.B) {
-	r := gjson.GetBytes(sampleJSON, "score")
+func BenchmarkFloat_std(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = r.Float()
+		var m map[string]any
+		_ = json.Unmarshal(sampleJSON, &m)
+		_ = m["score"].(float64)
 	}
 }
 
+// ===== Bool =====
 func BenchmarkBool_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON).Get("active")
 	for i := 0; i < b.N; i++ {
@@ -85,13 +93,15 @@ func BenchmarkBool_fxjson(b *testing.B) {
 	}
 }
 
-func BenchmarkBool_gjson(b *testing.B) {
-	r := gjson.GetBytes(sampleJSON, "active")
+func BenchmarkBool_std(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = r.Bool()
+		var m map[string]any
+		_ = json.Unmarshal(sampleJSON, &m)
+		_ = m["active"].(bool)
 	}
 }
 
+// ===== String =====
 func BenchmarkString_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON).Get("name")
 	for i := 0; i < b.N; i++ {
@@ -99,28 +109,15 @@ func BenchmarkString_fxjson(b *testing.B) {
 	}
 }
 
-func BenchmarkString_gjson(b *testing.B) {
-	r := gjson.GetBytes(sampleJSON, "name")
+func BenchmarkString_std(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = r.String()
+		var m map[string]any
+		_ = json.Unmarshal(sampleJSON, &m)
+		_ = m["name"].(string)
 	}
 }
 
-func BenchmarkNumStr_fxjson(b *testing.B) {
-	node := FromBytes(sampleJSON).Get("score")
-	for i := 0; i < b.N; i++ {
-		_, _ = node.NumStr()
-	}
-}
-
-func BenchmarkNumStr_gjson(b *testing.B) {
-	r := gjson.GetBytes(sampleJSON, "score")
-	for i := 0; i < b.N; i++ {
-		_ = r.Raw
-	}
-}
-
-// ===== Len / Keys =====
+// ===== Len =====
 func BenchmarkLen_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON).Get("tags")
 	for i := 0; i < b.N; i++ {
@@ -128,13 +125,15 @@ func BenchmarkLen_fxjson(b *testing.B) {
 	}
 }
 
-func BenchmarkLen_gjson(b *testing.B) {
-	r := gjson.GetBytes(sampleJSON, "tags")
+func BenchmarkLen_std(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = len(r.Array())
+		var m map[string]any
+		_ = json.Unmarshal(sampleJSON, &m)
+		_ = len(m["tags"].([]any))
 	}
 }
 
+// ===== Keys =====
 func BenchmarkKeys_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON).Get("meta")
 	for i := 0; i < b.N; i++ {
@@ -142,10 +141,15 @@ func BenchmarkKeys_fxjson(b *testing.B) {
 	}
 }
 
-func BenchmarkKeys_gjson(b *testing.B) {
-	r := gjson.GetBytes(sampleJSON, "meta")
+func BenchmarkKeys_std(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = r.Map()
+		var m map[string]any
+		_ = json.Unmarshal(sampleJSON, &m)
+		keys := make([]string, 0, len(m["meta"].(map[string]any)))
+		for k := range m["meta"].(map[string]any) {
+			keys = append(keys, k)
+		}
+		_ = keys
 	}
 }
 
@@ -157,14 +161,15 @@ func BenchmarkIndex_fxjson(b *testing.B) {
 	}
 }
 
-func BenchmarkIndex_gjson(b *testing.B) {
-	r := gjson.GetBytes(sampleJSON, "tags.1")
+func BenchmarkIndex_std(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = r
+		var m map[string]any
+		_ = json.Unmarshal(sampleJSON, &m)
+		_ = m["tags"].([]any)[1]
 	}
 }
 
-// ===== Exists / IsNull =====
+// ===== Exists =====
 func BenchmarkExists_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON).Get("name")
 	for i := 0; i < b.N; i++ {
@@ -172,40 +177,10 @@ func BenchmarkExists_fxjson(b *testing.B) {
 	}
 }
 
-func BenchmarkExists_gjson(b *testing.B) {
-	r := gjson.GetBytes(sampleJSON, "name")
-	for i := 0; i < b.N; i++ {
-		_ = r.Exists()
-	}
-}
-
-func BenchmarkIsNull_fxjson(b *testing.B) {
-	node := FromBytes(sampleJSON).Get("meta.nullVal")
-	for i := 0; i < b.N; i++ {
-		_ = node.IsNull()
-	}
-}
-
-func BenchmarkIsNull_gjson(b *testing.B) {
-	r := gjson.GetBytes(sampleJSON, "meta.nullVal")
-	for i := 0; i < b.N; i++ {
-		_ = r.Type == gjson.Null
-	}
-}
-
-// ===== Decode =====
-func BenchmarkDecode_fxjson(b *testing.B) {
-	node := FromBytes(sampleJSON)
+func BenchmarkExists_std(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var m map[string]any
-		_ = node.Decode(&m)
-	}
-}
-
-func BenchmarkDecode_gjson(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		var m map[string]any
-		_ = gjson.GetBytes(sampleJSON, "").Value() // gjson 无直接 decode 方法
-		_ = m
+		_ = json.Unmarshal(sampleJSON, &m)
+		_, _ = m["name"]
 	}
 }
