@@ -118,7 +118,7 @@ func (n Node) Get(path string) Node {
 	}
 	for i := 0; i < len(path); i++ {
 		if path[i] == '.' || path[i] == '[' {
-			return n.GetByPath(path)
+			return n.GetPath(path)
 		}
 	}
 	if n.typ != 'o' {
@@ -133,7 +133,7 @@ func (n Node) Get(path string) Node {
 	return parseValueAt(n.raw, pos, n.end)
 }
 
-func (n Node) GetByPath(path string) Node {
+func (n Node) GetPath(path string) Node {
 	if len(n.raw) == 0 || len(path) == 0 {
 		return Node{}
 	}
@@ -292,8 +292,7 @@ func findArrayElement(data []byte, start int, end int, index int) int {
 	return -1
 }
 
-// 借助全局缓存，O(1) 取第 i 个元素起点；保持值接收器以支持链式
-
+// Index 借助全局缓存，O(1) 取第 i 个元素起点；保持值接收器以支持链式
 func (n Node) Index(i int) Node {
 	offs := buildArrOffsetsCached(n)
 	if i < 0 || i >= len(offs) {
@@ -442,15 +441,15 @@ func parseValueAt(data []byte, pos int, end int) Node {
 
 // String 返回节点的字符串值
 // 如果节点类型不是 JSON 字符串，或内容为空，则返回错误
-func (n Node) String() (string, error) {
+func (n Node) String() string {
 	if n.typ != 's' || n.start+1 >= n.end {
-		return "", errors.New("not a string")
+		return ""
 	}
 	bytes := n.raw[n.start+1 : n.end-1]
 	if len(bytes) == 0 {
-		return "", errors.New("empty string")
+		return ""
 	}
-	return unsafe.String(&bytes[0], len(bytes)), nil
+	return unsafe.String(&bytes[0], len(bytes))
 }
 
 // Int 返回节点的 int64 整数值
@@ -679,11 +678,11 @@ func (n Node) Bool() (bool, error) {
 
 // NumStr 返回节点的数字原始字符串表示
 // 如果节点类型不是 JSON 数字或范围无效，则返回错误
-func (n Node) NumStr() (string, error) {
+func (n Node) NumStr() string {
 	if n.typ != 'n' || n.start >= n.end {
-		return "", errors.New("not a number")
+		return ""
 	}
-	return unsafe.String(&n.raw[n.start], n.end-n.start), nil
+	return unsafe.String(&n.raw[n.start], n.end-n.start)
 }
 
 // Raw 返回节点的原始 JSON 字节切片

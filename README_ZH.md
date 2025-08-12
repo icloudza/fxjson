@@ -8,7 +8,7 @@
 
 ## ✨ 特性
 
-* **0 分配**：`Get` / `GetByPath` / `Len` / `Index` 等核心路径零分配。
+* **0 分配**：`Get` / `GetPath` / `Len` / `Index` 等核心路径零分配。
 * **值接收器统一**：遵循 Go 规范，避免值/指针混用导致的语义歧义与逃逸。
 * **路径直达**：不构建中间树，按字节流直扫，跳过非目标字段。
 * **特化数值解析**：手写 `Int/Uint/Float/Bool`，不依赖 `strconv`，调用栈极短。
@@ -40,11 +40,11 @@ func main() {
   n := fxjson.FromBytes(b)
   name := n.Get("data").Get("user").Get("name").String() // "Alice"
   fmt.Println("name:", name)
-  age, _ := n.GetByPath("data.user.age").Int() // 30
+  age, _ := n.GetPath("data.user.age").Int() // 30
   fmt.Println("age:", age)
-  s1 := n.GetByPath("data.user.scores").Index(1).NumStr() // "88"
+  s1 := n.GetPath("data.user.scores").Index(1).NumStr() // "88"
   fmt.Println("s1:", s1)
-  ln := n.GetByPath("data.user.scores").Len() // 3
+  ln := n.GetPath("data.user.scores").Len() // 3
   fmt.Println("ln:", ln)
   keys := n.Get("data").Get("user").Keys() // [][]byte{"name","age","scores"}
   for i, k := range keys {
@@ -68,21 +68,21 @@ func main() {
 
 > 命令：`go test -bench . -benchmem -cpuprofile=cpu.out`
 
-| Benchmark          | fxjson ns/op | fxjson B/op | fxjson allocs/op | gjson ns/op | gjson B/op | gjson allocs/op |
-|--------------------|--------------|-------------|------------------|-------------|------------|-----------------|
-| BenchmarkGet       | 22.44        | 0           | 0                | 45.60       | 8          | 1               |
-| BenchmarkGetByPath | 92.77        | 0           | 0                | 138.5       | 5          | 1               |
-| BenchmarkInt       | 14.84        | 0           | 0                | 9.134       | 0          | 0               |
-| BenchmarkFloat     | 6.684        | 0           | 0                | 1.893       | 0          | 0               |
-| BenchmarkBool      | 1.788        | 0           | 0                | 1.878       | 0          | 0               |
-| BenchmarkString    | 0.9925       | 0           | 0                | 2.004       | 0          | 0               |
-| BenchmarkNumStr    | 0.8289       | 0           | 0                | 0.2287      | 0          | 0               |
-| BenchmarkLen       | 18.57        | 0           | 0                | 130.6       | 560        | 3               |
-| BenchmarkKeys      | 114.7        | 168         | 3                | 213.1       | 944        | 2               |
-| BenchmarkIndex     | 14.00        | 0           | 0                | 0.2255      | 0          | 0               |
-| BenchmarkExists    | 0.2261       | 0           | 0                | 1.301       | 0          | 0               |
-| BenchmarkIsNull    | 0.2247       | 0           | 0                | 0.2266      | 0          | 0               |
-| BenchmarkDecode    | 129.8        | 368         | 5                | 108.5       | 0          | 0               |
+| Benchmark        | fxjson ns/op | fxjson B/op | fxjson allocs/op | gjson ns/op | gjson B/op | gjson allocs/op |
+|------------------|--------------|-------------|------------------|-------------|------------|-----------------|
+| BenchmarkGet     | 22.44        | 0           | 0                | 45.60       | 8          | 1               |
+| BenchmarkGetPath | 92.77        | 0           | 0                | 138.5       | 5          | 1               |
+| BenchmarkInt     | 14.84        | 0           | 0                | 9.134       | 0          | 0               |
+| BenchmarkFloat   | 6.684        | 0           | 0                | 1.893       | 0          | 0               |
+| BenchmarkBool    | 1.788        | 0           | 0                | 1.878       | 0          | 0               |
+| BenchmarkString  | 0.9925       | 0           | 0                | 2.004       | 0          | 0               |
+| BenchmarkNumStr  | 0.8289       | 0           | 0                | 0.2287      | 0          | 0               |
+| BenchmarkLen     | 18.57        | 0           | 0                | 130.6       | 560        | 3               |
+| BenchmarkKeys    | 114.7        | 168         | 3                | 213.1       | 944        | 2               |
+| BenchmarkIndex   | 14.00        | 0           | 0                | 0.2255      | 0          | 0               |
+| BenchmarkExists  | 0.2261       | 0           | 0                | 1.301       | 0          | 0               |
+| BenchmarkIsNull  | 0.2247       | 0           | 0                | 0.2266      | 0          | 0               |
+| BenchmarkDecode  | 129.8        | 368         | 5                | 108.5       | 0          | 0               |
 
 ### 火焰图（pprof）
 
@@ -115,7 +115,7 @@ go tool pprof -http=:8080 ./fxjson.test cpu.out
 
 * **GC 噪音更低**：核心 API 0 alloc，火焰图几乎看不到 `mallocgc`/`makeslice`。
 * **栈更浅，热点更集中**：`findObjectField` / `skipValueFast` 等成为单点热点，易于继续优化。
-* **路径解析特化**：`GetByPath` 直扫字节流，少通用分支；复杂对象也能快速跳值。
+* **路径解析特化**：`GetPath` 直扫字节流，少通用分支；复杂对象也能快速跳值。
 * **整数/浮点解析自研**：不走 `strconv`，短路径、高吞吐。
 * **Index O(1)**：对同一数组多次索引，吞吐显著优于通用遍历。
 
@@ -130,7 +130,7 @@ n := fxjson.FromBytes(data)
 
 // 取字段 / 路径
 n.Get("data")
-n.GetByPath("a.b[3].c")
+n.GetPath("a.b[3].c")
 
 // 数组
 n.Get("arr").Len()

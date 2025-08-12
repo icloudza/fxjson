@@ -10,7 +10,7 @@ A zero-allocation, high-performance JSON parser for Go, focusing on **fast path 
 
 ## ✨ Features
 
-* **0 Allocation**: Core APIs such as `Get` / `GetByPath` / `Len` / `Index` are zero-allocation.
+* **0 Allocation**: Core APIs such as `Get` / `GetPath` / `Len` / `Index` are zero-allocation.
 * **Unified Value Receivers**: Complies with Go best practices to avoid value/pointer receiver ambiguity and escape analysis pitfalls.
 * **Path Direct Access**: No intermediate tree building; scans raw byte streams directly and skips irrelevant fields.
 * **Specialized Number Parsing**: Hand-written `Int/Uint/Float/Bool` implementations without `strconv`, with extremely short call stacks.
@@ -32,30 +32,30 @@ go get github.com/icloudza/fxjson
 package main
 
 import (
-  "fmt"
-  "github.com/icloudza/fxjson"
+	"fmt"
+	"github.com/icloudza/fxjson"
 )
 
 func main() {
-  b := []byte(`{"data":{"user":{"name":"Alice","age":30,"scores":[99,88,77]}}}`)
+	b := []byte(`{"data":{"user":{"name":"Alice","age":30,"scores":[99,88,77]}}}`)
 
-  n := fxjson.FromBytes(b)
-  name := n.Get("data").Get("user").Get("name").String() // "Alice"
-  fmt.Println("name:", name)
+	n := fxjson.FromBytes(b)
+	name := n.Get("data").Get("user").Get("name").String() // "Alice"
+	fmt.Println("name:", name)
 
-  age, _ := n.GetByPath("data.user.age").Int() // 30
-  fmt.Println("age:", age)
+	age, _ := n.GetPath("data.user.age").Int() // 30
+	fmt.Println("age:", age)
 
-  s1 := n.GetByPath("data.user.scores").Index(1).NumStr() // "88"
-  fmt.Println("s1:", s1)
+	s1, _ := n.GetPath("data.user.scores").Index(1).NumStr() // "88"
+	fmt.Println("s1:", s1)
 
-  ln := n.GetByPath("data.user.scores").Len() // 3
-  fmt.Println("ln:", ln)
+	ln := n.GetPath("data.user.scores").Len() // 3
+	fmt.Println("ln:", ln)
 
-  keys := n.Get("data").Get("user").Keys() // [][]byte{"name","age","scores"}
-  for i, k := range keys {
-    fmt.Printf("user index %d %s \n", i, string(k))
-  }
+	keys := n.Get("data").Get("user").Keys() // [][]byte{"name","age","scores"}
+	for i, k := range keys {
+		fmt.Printf("user index %d %s \n", i, string(k))
+	}
 }
 
 //result:
@@ -90,21 +90,21 @@ Command:
 go test -bench . -benchmem -cpuprofile=cpu.out
 ```
 
-| Benchmark          | fxjson ns/op | fxjson B/op | fxjson allocs/op | gjson ns/op | gjson B/op | gjson allocs/op |
-|--------------------|--------------|-------------|------------------|-------------|------------|-----------------|
-| BenchmarkGet       | 22.44        | 0           | 0                | 45.60       | 8          | 1               |
-| BenchmarkGetByPath | 92.77        | 0           | 0                | 138.5       | 5          | 1               |
-| BenchmarkInt       | 14.84        | 0           | 0                | 9.134       | 0          | 0               |
-| BenchmarkFloat     | 6.684        | 0           | 0                | 1.893       | 0          | 0               |
-| BenchmarkBool      | 1.788        | 0           | 0                | 1.878       | 0          | 0               |
-| BenchmarkString    | 0.9925       | 0           | 0                | 2.004       | 0          | 0               |
-| BenchmarkNumStr    | 0.8289       | 0           | 0                | 0.2287      | 0          | 0               |
-| BenchmarkLen       | 18.57        | 0           | 0                | 130.6       | 560        | 3               |
-| BenchmarkKeys      | 114.7        | 168         | 3                | 213.1       | 944        | 2               |
-| BenchmarkIndex     | 14.00        | 0           | 0                | 0.2255      | 0          | 0               |
-| BenchmarkExists    | 0.2261       | 0           | 0                | 1.301       | 0          | 0               |
-| BenchmarkIsNull    | 0.2247       | 0           | 0                | 0.2266      | 0          | 0               |
-| BenchmarkDecode    | 129.8        | 368         | 5                | 108.5       | 0          | 0               |
+| Benchmark        | fxjson ns/op | fxjson B/op | fxjson allocs/op | gjson ns/op | gjson B/op | gjson allocs/op |
+|------------------|--------------|-------------|------------------|-------------|------------|-----------------|
+| BenchmarkGet     | 22.44        | 0           | 0                | 45.60       | 8          | 1               |
+| BenchmarkGetPath | 92.77        | 0           | 0                | 138.5       | 5          | 1               |
+| BenchmarkInt     | 14.84        | 0           | 0                | 9.134       | 0          | 0               |
+| BenchmarkFloat   | 6.684        | 0           | 0                | 1.893       | 0          | 0               |
+| BenchmarkBool    | 1.788        | 0           | 0                | 1.878       | 0          | 0               |
+| BenchmarkString  | 0.9925       | 0           | 0                | 2.004       | 0          | 0               |
+| BenchmarkNumStr  | 0.8289       | 0           | 0                | 0.2287      | 0          | 0               |
+| BenchmarkLen     | 18.57        | 0           | 0                | 130.6       | 560        | 3               |
+| BenchmarkKeys    | 114.7        | 168         | 3                | 213.1       | 944        | 2               |
+| BenchmarkIndex   | 14.00        | 0           | 0                | 0.2255      | 0          | 0               |
+| BenchmarkExists  | 0.2261       | 0           | 0                | 1.301       | 0          | 0               |
+| BenchmarkIsNull  | 0.2247       | 0           | 0                | 0.2266      | 0          | 0               |
+| BenchmarkDecode  | 129.8        | 368         | 5                | 108.5       | 0          | 0               |
 
 ---
 
@@ -142,7 +142,7 @@ go tool pprof -http=:8080 ./fxjson.test cpu.out
 
 * **Lower GC noise**: Core APIs are zero-allocation; flamegraphs show almost no `mallocgc`/`makeslice`.
 * **Shallower stack & focused hotspots**: `findObjectField` / `skipValueFast` are single hotspots, making further optimization easier.
-* **Optimized path parsing**: `GetByPath` directly scans bytes, avoiding generic branches and handling complex objects efficiently.
+* **Optimized path parsing**: `GetPath` directly scans bytes, avoiding generic branches and handling complex objects efficiently.
 * **Custom integer/float parsing**: No `strconv`, short execution path, higher throughput.
 * **O(1) Array Indexing**: Repeated access to the same array is significantly faster.
 
@@ -157,7 +157,7 @@ n := fxjson.FromBytes(data)
 
 // Field / path access
 n.Get("data")
-n.GetByPath("a.b[3].c")
+n.GetPath("a.b[3].c")
 
 // Arrays
 n.Get("arr").Len()

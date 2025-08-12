@@ -22,7 +22,7 @@ var sampleJSON = []byte(`{
 	}
 }`)
 
-// ===== Get / GetByPath =====
+// ===== Get / GetPath =====
 func BenchmarkGet_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON)
 	for i := 0; i < b.N; i++ {
@@ -36,14 +36,14 @@ func BenchmarkGet_gjson(b *testing.B) {
 	}
 }
 
-func BenchmarkGetByPath_fxjson(b *testing.B) {
+func BenchmarkGetPath_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON)
 	for i := 0; i < b.N; i++ {
-		_ = node.GetByPath("meta.nested.flag")
+		_ = node.GetPath("meta.nested.flag")
 	}
 }
 
-func BenchmarkGetByPath_gjson(b *testing.B) {
+func BenchmarkGetPath_gjson(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = gjson.GetBytes(sampleJSON, "meta.nested.flag")
 	}
@@ -67,7 +67,7 @@ func BenchmarkInt_gjson(b *testing.B) {
 func BenchmarkFloat_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON).Get("score")
 	for i := 0; i < b.N; i++ {
-		_ = node.Float()
+		_, _ = node.Float()
 	}
 }
 
