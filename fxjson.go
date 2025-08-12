@@ -580,7 +580,7 @@ func (n Node) String() (string, error) {
 	}
 	bytes := n.raw[n.start+1 : n.end-1]
 	if len(bytes) == 0 {
-		return "", errors.New("empty string")
+		return "", nil // 空字符串正常返回
 	}
 	return unsafe.String(&bytes[0], len(bytes)), nil
 }
