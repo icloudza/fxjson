@@ -439,17 +439,22 @@ func parseValueAt(data []byte, pos int, end int) Node {
 }
 
 // ===== 字面量取值 =====
-func (n Node) String() string {
+
+// String 返回节点的字符串值
+// 如果节点类型不是 JSON 字符串，或内容为空，则返回错误
+func (n Node) String() (string, error) {
 	if n.typ != 's' || n.start+1 >= n.end {
-		return ""
+		return "", errors.New("not a string")
 	}
 	bytes := n.raw[n.start+1 : n.end-1]
 	if len(bytes) == 0 {
-		return ""
+		return "", errors.New("empty string")
 	}
-	return unsafe.String(&bytes[0], len(bytes))
+	return unsafe.String(&bytes[0], len(bytes)), nil
 }
 
+// Int 返回节点的 int64 整数值
+// 如果节点类型不是 JSON 数字、为空、包含非整数字符，或超出 int64 范围，则返回错误
 func (n Node) Int() (int64, error) {
 	if n.typ != 'n' || n.start >= n.end {
 		return 0, errors.New("not a number")
@@ -491,6 +496,8 @@ func (n Node) Int() (int64, error) {
 	return int64(val), nil
 }
 
+// Uint 返回节点的 uint64 无符号整数值
+// 如果节点类型不是 JSON 数字、为空、包含非整数字符、为负数，或超出 uint64 范围，则返回错误
 func (n Node) Uint() (uint64, error) {
 	if n.typ != 'n' || n.start >= n.end {
 		return 0, errors.New("not a number")
@@ -517,13 +524,17 @@ func (n Node) Uint() (uint64, error) {
 	return val, nil
 }
 
-func (n Node) Float() float64 {
+// Float 返回节点的 float64 浮点值
+// 如果节点类型不是 JSON 数字，或内容为空、格式非法，则返回错误
+// 支持解析整数、小数部分以及科学计数法（e/E），并正确处理符号与指数偏移
+// 在解析过程中限制尾数（mantissa）最大位数，以减少精度损失
+func (n Node) Float() (float64, error) {
 	if n.typ != 'n' || n.start >= n.end {
-		return 0
+		return 0, errors.New("not a number")
 	}
 	data := n.raw[n.start:n.end]
 	if len(data) == 0 {
-		return 0
+		return 0, errors.New("empty number")
 	}
 	i := 0
 	neg := false
@@ -531,7 +542,7 @@ func (n Node) Float() float64 {
 		neg = true
 		i++
 		if i >= len(data) {
-			return 0
+			return 0, errors.New("invalid number")
 		}
 	}
 	var mant uint64
@@ -572,7 +583,7 @@ func (n Node) Float() float64 {
 	if i < len(data) && (data[i] == 'e' || data[i] == 'E') {
 		i++
 		if i >= len(data) {
-			return 0
+			return 0, errors.New("invalid number")
 		}
 		expNeg := false
 		if data[i] == '+' || data[i] == '-' {
@@ -580,7 +591,7 @@ func (n Node) Float() float64 {
 			i++
 		}
 		if i >= len(data) || data[i] < '0' || data[i] > '9' {
-			return 0
+			return 0, errors.New("invalid number")
 		}
 		exp := 0
 		const maxExp = 1000
@@ -601,7 +612,7 @@ func (n Node) Float() float64 {
 		}
 	}
 	if !sawDigit {
-		return 0
+		return 0, errors.New("invalid number")
 	}
 	f := float64(mant)
 	if decExp != 0 {
@@ -610,7 +621,7 @@ func (n Node) Float() float64 {
 	if neg {
 		f = -f
 	}
-	return f
+	return f, nil
 }
 
 func scaleByPow10(x float64, k int) float64 {
@@ -650,6 +661,8 @@ func scaleByPow10(x float64, k int) float64 {
 	return x
 }
 
+// Bool 返回节点的布尔值
+// 如果节点类型不是 JSON 布尔，或内容不是 "true"/"false"，则返回错误
 func (n Node) Bool() (bool, error) {
 	if n.typ != 'b' || n.start >= n.end {
 		return false, errors.New("not a bool")
@@ -664,21 +677,56 @@ func (n Node) Bool() (bool, error) {
 	return false, errors.New("invalid bool")
 }
 
-func (n Node) Exists() bool { return len(n.raw) > 0 && n.start >= 0 && n.end > n.start }
-func (n Node) IsNull() bool { return n.typ == 'l' }
-
-func (n Node) NumStr() string {
+// NumStr 返回节点的数字原始字符串表示
+// 如果节点类型不是 JSON 数字或范围无效，则返回错误
+func (n Node) NumStr() (string, error) {
 	if n.typ != 'n' || n.start >= n.end {
-		return ""
+		return "", errors.New("not a number")
 	}
-	return unsafe.String(&n.raw[n.start], n.end-n.start)
+	return unsafe.String(&n.raw[n.start], n.end-n.start), nil
 }
 
+// Raw 返回节点的原始 JSON 字节切片
+// 如果节点范围无效，则返回 nil
 func (n Node) Raw() []byte {
 	if n.start >= 0 && n.end <= len(n.raw) && n.start < n.end {
 		return n.raw[n.start:n.end]
 	}
 	return nil
+}
+
+// ===== Predicates =====
+
+// Exists 判断节点是否存在。
+// 若原始数据非空且起止位置有效，则返回 true，否则返回 false
+func (n Node) Exists() bool { return len(n.raw) > 0 && n.start >= 0 && n.end > n.start }
+
+// IsObject 判断节点是否为 JSON 对象
+func (n Node) IsObject() bool { return n.typ == 'o' }
+
+// IsArray 判断节点是否为 JSON 数组
+func (n Node) IsArray() bool { return n.typ == 'a' }
+
+// IsString 判断节点是否为 JSON 字符串
+func (n Node) IsString() bool { return n.typ == 's' }
+
+// IsNumber 判断节点是否为 JSON 数字
+func (n Node) IsNumber() bool { return n.typ == 'n' }
+
+// IsBool 判断节点是否为 JSON 布尔值
+func (n Node) IsBool() bool { return n.typ == 'b' }
+
+// IsNull 判断节点是否为 JSON null
+func (n Node) IsNull() bool { return n.typ == 'l' }
+
+// IsScalar 判断节点是否为标量类型（字符串、数字、布尔值或 null）
+func (n Node) IsScalar() bool {
+	return n.typ == 's' || n.typ == 'n' || n.typ == 'b' || n.typ == 'l'
+}
+
+// IsContainer 判断节点是否为容器类型（对象或数组）
+func (n Node) IsContainer() bool {
+	return n.typ == 'o' || n.typ == 'a'
 }
 
 // ===== 统计 / Keys =====
@@ -848,13 +896,19 @@ func (n Node) Keys() [][]byte {
 
 // ===== 解码 =====
 
-func (n Node) RawString() string {
+// RawString 返回节点的原始 JSON 字符串形式。
+// 如果节点范围无效，则返回错误。
+// 返回的字符串直接引用底层数据，不会产生额外分配。
+func (n Node) RawString() (string, error) {
 	if n.start >= 0 && n.end <= len(n.raw) && n.start < n.end {
-		return unsafe.String(&n.raw[n.start], n.end-n.start)
+		return unsafe.String(&n.raw[n.start], n.end-n.start), nil
 	}
-	return ""
+	return "", errors.New("invalid node range")
 }
 
+// Decode 将节点的 JSON 值解码到提供的变量 v 中
+// v 必须是一个非 nil 指针，否则返回错误
+// 如果节点不存在或解析失败，也会返回错误
 func (n Node) Decode(v any) error {
 	if !n.Exists() {
 		return errors.New("node does not exist")
@@ -1085,7 +1139,6 @@ func (t NodeType) String() string {
 	}
 }
 
-// ===== tool =====
 func detectType(c byte) byte {
 	switch c {
 	case '{':
