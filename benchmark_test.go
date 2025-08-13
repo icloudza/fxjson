@@ -184,3 +184,12 @@ func BenchmarkExists_std(b *testing.B) {
 		_, _ = m["name"]
 	}
 }
+
+// ===== JsonWithParam 格式化输出 =====
+func BenchmarkJsonWithParam_fxjson(b *testing.B) {
+	node := FromBytes(sampleJSON)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = node.Json()
+	}
+}

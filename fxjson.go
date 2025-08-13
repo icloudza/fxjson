@@ -1,7 +1,8 @@
 package fxjson
 
 import (
-	"errors"
+	"fmt"
+	"math"
 	"reflect"
 	"sync"
 	"unsafe"
@@ -18,6 +19,13 @@ type Node struct {
 	start int
 	end   int
 	typ   byte // 'o' 'a' 's' 'n' 'b' 'l'
+}
+
+// JsonParam 用于控制 JSON 输出的格式化参数
+type JsonParam struct {
+	Indent     int  // 缩进空格数；0 表示紧凑模式（不换行不缩进），>0 表示每层缩进的空格数量
+	EscapeHTML bool // 是否转义 HTML 符号（< > &）；true 时会输出 \u003C \u003E \u0026
+	Precision  int  // 浮点数精度；-1 表示原样输出，>=0 表示保留的小数位数（四舍五入）
 }
 
 type NodeType byte
@@ -575,13 +583,18 @@ func parseValueAt(data []byte, pos int, end int) Node {
 // String 返回节点的字符串值
 // 如果节点类型不是 JSON 字符串，或内容为空，则返回错误
 func (n Node) String() (string, error) {
-	if n.typ != 's' || n.start+1 >= n.end {
-		return "", errors.New("not a string")
+	if n.typ != 's' {
+		return "", fmt.Errorf("node is not a string type (got type=%q)", n.Kind())
 	}
+	if n.start+1 >= n.end {
+		return "", fmt.Errorf("invalid string bounds: start=%d end=%d", n.start, n.end)
+	}
+
 	bytes := n.raw[n.start+1 : n.end-1]
 	if len(bytes) == 0 {
 		return "", nil // 空字符串正常返回
 	}
+
 	return unsafe.String(&bytes[0], len(bytes)), nil
 }
 
@@ -589,11 +602,11 @@ func (n Node) String() (string, error) {
 // 如果节点类型不是 JSON 数字、为空、包含非整数字符，或超出 int64 范围，则返回错误
 func (n Node) Int() (int64, error) {
 	if n.typ != 'n' || n.start >= n.end {
-		return 0, errors.New("not a number")
+		return 0, fmt.Errorf("node is not a number type (got type=%q)", n.Kind())
 	}
 	data := n.raw[n.start:n.end]
 	if len(data) == 0 {
-		return 0, errors.New("empty number")
+		return 0, fmt.Errorf("empty number at [%d:%d] (type=%q)", n.start, n.end, n.Kind())
 	}
 	i := 0
 	neg := false
@@ -601,23 +614,32 @@ func (n Node) Int() (int64, error) {
 		neg = true
 		i++
 		if i >= len(data) {
-			return 0, errors.New("invalid number")
+			return 0, fmt.Errorf("invalid number: only a minus sign at [%d:%d] (type=%q)", n.start, n.end, n.Kind())
 		}
 	}
 	var val uint64
 	for ; i < len(data); i++ {
 		c := data[i]
 		if c < '0' || c > '9' {
-			return 0, errors.New("not an integer")
+			return 0, fmt.Errorf(
+				"not an integer: found char %q at pos=%d (abs=%d, type=%q)",
+				c, i, n.start+i, n.Kind(),
+			)
 		}
 		d := uint64(c - '0')
 		if !neg {
 			if val > (maxInt64U-d)/10 {
-				return 0, errors.New("int64 overflow")
+				return 0, fmt.Errorf(
+					"int64 overflow: positive value exceeds %d at pos=%d (abs=%d, current=%d)",
+					math.MaxInt64, i, n.start+i, val,
+				)
 			}
 		} else {
 			if val > (minInt64U-d)/10 {
-				return 0, errors.New("int64 overflow")
+				return 0, fmt.Errorf(
+					"int64 overflow: negative value exceeds %d at pos=%d (abs=%d, current=%d)",
+					math.MinInt64, i, n.start+i, val,
+				)
 			}
 		}
 		val = val*10 + d
@@ -632,24 +654,39 @@ func (n Node) Int() (int64, error) {
 // 如果节点类型不是 JSON 数字、为空、包含非整数字符、为负数，或超出 uint64 范围，则返回错误
 func (n Node) Uint() (uint64, error) {
 	if n.typ != 'n' || n.start >= n.end {
-		return 0, errors.New("not a number")
+		return 0, fmt.Errorf(
+			"not a number: got type=%q at range [%d:%d]",
+			n.Kind(), n.start, n.end,
+		)
 	}
 	data := n.raw[n.start:n.end]
 	if len(data) == 0 {
-		return 0, errors.New("empty number")
+		return 0, fmt.Errorf(
+			"empty number at range [%d:%d] (type=%q)",
+			n.start, n.end, n.Kind(),
+		)
 	}
 	if data[0] == '-' {
-		return 0, errors.New("negative to uint")
+		return 0, fmt.Errorf(
+			"negative to uint at pos=%d (abs=%d, type=%q)",
+			0, n.start, n.Kind(),
+		)
 	}
 	var val uint64
 	for i := 0; i < len(data); i++ {
 		c := data[i]
 		if c < '0' || c > '9' {
-			return 0, errors.New("not an unsigned integer")
+			return 0, fmt.Errorf(
+				"not an unsigned integer: found char %q at pos=%d (abs=%d, type=%q)",
+				c, i, n.start+i, n.Kind(),
+			)
 		}
 		d := uint64(c - '0')
 		if val > (maxUint64-d)/10 {
-			return 0, errors.New("uint64 overflow")
+			return 0, fmt.Errorf(
+				"uint64 overflow: value exceeds %d at pos=%d (abs=%d, current=%d)",
+				maxUint64, i, n.start+i, val,
+			)
 		}
 		val = val*10 + d
 	}
@@ -662,11 +699,17 @@ func (n Node) Uint() (uint64, error) {
 // 在解析过程中限制尾数（mantissa）最大位数，以减少精度损失
 func (n Node) Float() (float64, error) {
 	if n.typ != 'n' || n.start >= n.end {
-		return 0, errors.New("not a number")
+		return 0, fmt.Errorf(
+			"not a number: got type=%q at range [%d:%d] (len=%d)",
+			n.Kind(), n.start, n.end, n.end-n.start,
+		)
 	}
 	data := n.raw[n.start:n.end]
 	if len(data) == 0 {
-		return 0, errors.New("empty number")
+		return 0, fmt.Errorf(
+			"empty number at range [%d:%d] (type=%q)",
+			n.start, n.end, n.Kind(),
+		)
 	}
 	i := 0
 	neg := false
@@ -674,7 +717,10 @@ func (n Node) Float() (float64, error) {
 		neg = true
 		i++
 		if i >= len(data) {
-			return 0, errors.New("invalid number")
+			return 0, fmt.Errorf(
+				"invalid number: lone '-' at pos=%d (abs=%d, type=%q)",
+				i-1, n.start+(i-1), n.Kind(),
+			)
 		}
 	}
 	var mant uint64
@@ -715,7 +761,10 @@ func (n Node) Float() (float64, error) {
 	if i < len(data) && (data[i] == 'e' || data[i] == 'E') {
 		i++
 		if i >= len(data) {
-			return 0, errors.New("invalid number")
+			return 0, fmt.Errorf(
+				"invalid number: unexpected end after '-' at pos=%d (abs=%d, type=%q)",
+				i-1, n.start+(i-1), n.Kind(),
+			)
 		}
 		expNeg := false
 		if data[i] == '+' || data[i] == '-' {
@@ -723,7 +772,14 @@ func (n Node) Float() (float64, error) {
 			i++
 		}
 		if i >= len(data) || data[i] < '0' || data[i] > '9' {
-			return 0, errors.New("invalid number")
+			var got byte
+			if i < len(data) {
+				got = data[i]
+			}
+			return 0, fmt.Errorf(
+				"invalid number: expected digit but got %q at pos=%d (abs=%d, type=%q)",
+				got, i, n.start+i, n.Kind(),
+			)
 		}
 		exp := 0
 		const maxExp = 1000
@@ -744,7 +800,10 @@ func (n Node) Float() (float64, error) {
 		}
 	}
 	if !sawDigit {
-		return 0, errors.New("invalid number")
+		return 0, fmt.Errorf(
+			"invalid number: no digits found at range [%d:%d] (type=%q)",
+			n.start, n.end, n.Kind(),
+		)
 	}
 	f := float64(mant)
 	if decExp != 0 {
@@ -797,7 +856,10 @@ func scaleByPow10(x float64, k int) float64 {
 // 如果节点类型不是 JSON 布尔，或内容不是 "true"/"false"，则返回错误
 func (n Node) Bool() (bool, error) {
 	if n.typ != 'b' || n.start >= n.end {
-		return false, errors.New("not a bool")
+		return false, fmt.Errorf(
+			"not a bool: got type=%q at range [%d:%d]",
+			n.Kind(), n.start, n.end,
+		)
 	}
 	data := n.raw[n.start:n.end]
 	if len(data) == 4 && data[0] == 't' && data[1] == 'r' && data[2] == 'u' && data[3] == 'e' {
@@ -806,14 +868,21 @@ func (n Node) Bool() (bool, error) {
 	if len(data) == 5 && data[0] == 'f' && data[1] == 'a' && data[2] == 'l' && data[3] == 's' && data[4] == 'e' {
 		return false, nil
 	}
-	return false, errors.New("invalid bool")
+	return false, fmt.Errorf(
+		"invalid bool: value=%q at range [%d:%d] (type=%q)",
+		unsafe.String(&n.raw[n.start], n.end-n.start),
+		n.start, n.end, n.Kind(),
+	)
 }
 
 // NumStr 返回节点的数字原始字符串表示
 // 如果节点类型不是 JSON 数字或范围无效，则返回错误
 func (n Node) NumStr() (string, error) {
 	if n.typ != 'n' || n.start >= n.end {
-		return "", errors.New("not a string")
+		return "", fmt.Errorf(
+			"not a number: got type=%q at range [%d:%d]",
+			n.Kind(), n.start, n.end,
+		)
 	}
 	return unsafe.String(&n.raw[n.start], n.end-n.start), nil
 }
@@ -825,6 +894,13 @@ func (n Node) Raw() []byte {
 		return n.raw[n.start:n.end]
 	}
 	return nil
+}
+
+func (n Node) Json() string {
+	if !n.Exists() || n.start < 0 || n.end > len(n.raw) || n.start >= n.end {
+		return ""
+	}
+	return string(n.raw[n.start:n.end])
 }
 
 // ===== Predicates =====
@@ -1035,7 +1111,10 @@ func (n Node) RawString() (string, error) {
 	if n.start >= 0 && n.end <= len(n.raw) && n.start < n.end {
 		return unsafe.String(&n.raw[n.start], n.end-n.start), nil
 	}
-	return "", errors.New("invalid node range")
+	return "", fmt.Errorf(
+		"invalid node range: start=%d, end=%d, len(raw)=%d, type=%q",
+		n.start, n.end, len(n.raw), n.Kind(),
+	)
 }
 
 // Decode 将节点的 JSON 值解码到提供的变量 v 中
@@ -1043,11 +1122,17 @@ func (n Node) RawString() (string, error) {
 // 如果节点不存在或解析失败，也会返回错误
 func (n Node) Decode(v any) error {
 	if !n.Exists() {
-		return errors.New("node does not exist")
+		return fmt.Errorf(
+			"node does not exist: start=%d, end=%d, len(raw)=%d, type=%q",
+			n.start, n.end, len(n.raw), n.Kind(),
+		)
 	}
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return errors.New("v must be a non-nil pointer")
+		return fmt.Errorf(
+			"v must be a non-nil pointer: got kind=%s, isNil=%v, type=%T",
+			rv.Kind(), rv.IsNil(), v,
+		)
 	}
 	val, _, err := fastDecode(n.raw, n.start, n.end)
 	if err != nil {
@@ -1059,7 +1144,10 @@ func (n Node) Decode(v any) error {
 
 func fastDecode(buf []byte, start, end int) (any, int, error) {
 	if start >= end {
-		return nil, start, errors.New("empty node")
+		return nil, start, fmt.Errorf(
+			"empty node: start=%d, end=%d, len(buf)=%d",
+			start, end, len(buf),
+		)
 	}
 	switch buf[start] {
 	case '{':
@@ -1073,7 +1161,10 @@ func fastDecode(buf []byte, start, end int) (any, int, error) {
 				return m, i + 1, nil
 			}
 			if buf[i] != '"' {
-				return nil, i, errors.New("invalid object key")
+				return nil, i, fmt.Errorf(
+					"invalid object key: expected '\"' at pos=%d, got=%q (byte=%d)",
+					i, buf[i], buf[i],
+				)
 			}
 			keyStart := i + 1
 			i++
@@ -1134,7 +1225,10 @@ func fastDecode(buf []byte, start, end int) (any, int, error) {
 
 func parseIntFast(data []byte) (int64, error) {
 	if len(data) == 0 {
-		return 0, errors.New("empty number")
+		return 0, fmt.Errorf(
+			"empty number: len(data)=%d, data=%q",
+			len(data), data,
+		)
 	}
 	i := 0
 	neg := false
@@ -1142,23 +1236,35 @@ func parseIntFast(data []byte) (int64, error) {
 		neg = true
 		i++
 		if i >= len(data) {
-			return 0, errors.New("invalid number")
+			return 0, fmt.Errorf(
+				"invalid number: only '-' found, no digits after, len(data)=%d, data=%q",
+				len(data), data,
+			)
 		}
 	}
 	var val uint64
 	for ; i < len(data); i++ {
 		c := data[i]
 		if c < '0' || c > '9' {
-			return 0, errors.New("not an integer")
+			return 0, fmt.Errorf(
+				"not an integer: found %q (byte=%d) at pos=%d in %q",
+				c, c, i, data,
+			)
 		}
 		d := uint64(c - '0')
 		if !neg {
 			if val > (maxInt64U-d)/10 {
-				return 0, errors.New("int64 overflow")
+				return 0, fmt.Errorf(
+					"int64 overflow: value=%d digit=%d pos=%d data=%q",
+					val, d, i, data,
+				)
 			}
 		} else {
 			if val > (minInt64U-d)/10 {
-				return 0, errors.New("int64 overflow")
+				return 0, fmt.Errorf(
+					"int64 overflow: negative value=%d digit=%d pos=%d data=%q",
+					val, d, i, data,
+				)
 			}
 		}
 		val = val*10 + d
