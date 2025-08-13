@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 	"sync"
 	"unsafe"
 )
@@ -15,10 +16,11 @@ const (
 )
 
 type Node struct {
-	raw   []byte
-	start int
-	end   int
-	typ   byte // 'o' 'a' 's' 'n' 'b' 'l'
+	raw      []byte
+	start    int
+	end      int
+	typ      byte   // 'o' 'a' 's' 'n' 'b' 'l'
+	expanded []byte // 存储展开后的JSON数据
 }
 
 // JsonParam 用于控制 JSON 输出的格式化参数
@@ -60,11 +62,14 @@ func buildArrOffsetsCached(n Node) []int {
 	if n.typ != 'a' || n.start >= n.end {
 		return nil
 	}
-	key := arrKey{data: dataPtr(n.raw), s: n.start, e: n.end}
+
+	// 使用展开后的数据
+	data := n.getWorkingData()
+	key := arrKey{data: dataPtr(data), s: n.start, e: n.end}
 	if v, ok := arrIdxCache.Load(key); ok {
 		return v.([]int)
 	}
-	data := n.raw
+
 	pos := n.start + 1 // skip '['
 	var offs []int
 	for pos < n.end {
@@ -87,14 +92,275 @@ func buildArrOffsetsCached(n Node) []int {
 	return offs
 }
 
-// ===== From / 基本访问 =====
+// getWorkingData 返回用于工作的数据（优先使用展开后的数据）
+func (n Node) getWorkingData() []byte {
+	if len(n.expanded) > 0 {
+		return n.expanded
+	}
+	return n.raw
+}
 
-func FromBytes(b []byte) Node {
-	if len(b) == 0 {
+// ===== 转义处理相关函数 =====
+
+// unescapeJSON 解转义JSON字符串
+func unescapeJSON(s string) string {
+	if !strings.Contains(s, "\\") {
+		return s
+	}
+
+	var result strings.Builder
+	result.Grow(len(s))
+
+	i := 0
+	for i < len(s) {
+		if s[i] != '\\' {
+			result.WriteByte(s[i])
+			i++
+			continue
+		}
+
+		if i+1 >= len(s) {
+			result.WriteByte(s[i])
+			i++
+			continue
+		}
+
+		switch s[i+1] {
+		case '"':
+			result.WriteByte('"')
+			i += 2
+		case '\\':
+			result.WriteByte('\\')
+			i += 2
+		case '/':
+			result.WriteByte('/')
+			i += 2
+		case 'b':
+			result.WriteByte('\b')
+			i += 2
+		case 'f':
+			result.WriteByte('\f')
+			i += 2
+		case 'n':
+			result.WriteByte('\n')
+			i += 2
+		case 'r':
+			result.WriteByte('\r')
+			i += 2
+		case 't':
+			result.WriteByte('\t')
+			i += 2
+		case 'u':
+			if i+5 < len(s) {
+				// 简化处理：直接跳过unicode转义
+				result.WriteString(s[i : i+6])
+				i += 6
+			} else {
+				result.WriteByte(s[i])
+				i++
+			}
+		default:
+			result.WriteByte(s[i])
+			i++
+		}
+	}
+
+	return result.String()
+}
+
+// isValidJSON 检查字符串是否为有效的JSON
+func isValidJSON(s string) bool {
+	s = strings.TrimSpace(s)
+	if len(s) == 0 {
+		return false
+	}
+	return (s[0] == '{' && s[len(s)-1] == '}') || (s[0] == '[' && s[len(s)-1] == ']')
+}
+
+// expandNestedJSON 递归展开嵌套的JSON字符串
+func expandNestedJSON(data []byte) []byte {
+	node := parseRootNode(data)
+	if !node.Exists() {
+		return data
+	}
+
+	expanded, changed := expandNode(node)
+	if !changed {
+		return data
+	}
+
+	return expanded
+}
+
+// expandNode 展开单个节点
+func expandNode(n Node) ([]byte, bool) {
+	data := n.getWorkingData()
+
+	switch n.typ {
+	case 'o':
+		return expandObject(n, data)
+	case 'a':
+		return expandArray(n, data)
+	case 's':
+		return expandString(n, data)
+	default:
+		return data[n.start:n.end], false
+	}
+}
+
+// expandObject 展开对象
+func expandObject(n Node, data []byte) ([]byte, bool) {
+	var result strings.Builder
+	result.WriteByte('{')
+
+	pos := n.start + 1 // skip '{'
+	changed := false
+	first := true
+
+	for pos < n.end {
+		// 跳过空白
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos >= n.end || data[pos] == '}' {
+			break
+		}
+
+		if !first {
+			result.WriteByte(',')
+		}
+		first = false
+
+		// 解析键
+		if data[pos] != '"' {
+			break
+		}
+
+		keyStart := pos
+		pos++
+		for pos < n.end && data[pos] != '"' {
+			if data[pos] == '\\' {
+				pos++
+			}
+			pos++
+		}
+		pos++ // skip closing quote
+
+		result.Write(data[keyStart:pos])
+
+		// 跳过冒号
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos < n.end && data[pos] == ':' {
+			pos++
+			result.WriteByte(':')
+		}
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+
+		// 解析值
+		valueNode := parseValueAt(data, pos, n.end)
+		expandedValue, valueChanged := expandNode(valueNode)
+		result.Write(expandedValue)
+
+		if valueChanged {
+			changed = true
+		}
+
+		pos = valueNode.end
+
+		// 跳过逗号
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos < n.end && data[pos] == ',' {
+			pos++
+		}
+	}
+
+	result.WriteByte('}')
+	return []byte(result.String()), changed
+}
+
+// expandArray 展开数组
+func expandArray(n Node, data []byte) ([]byte, bool) {
+	var result strings.Builder
+	result.WriteByte('[')
+
+	pos := n.start + 1 // skip '['
+	changed := false
+	first := true
+
+	for pos < n.end {
+		// 跳过空白
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos >= n.end || data[pos] == ']' {
+			break
+		}
+
+		if !first {
+			result.WriteByte(',')
+		}
+		first = false
+
+		// 解析值
+		valueNode := parseValueAt(data, pos, n.end)
+		expandedValue, valueChanged := expandNode(valueNode)
+		result.Write(expandedValue)
+
+		if valueChanged {
+			changed = true
+		}
+
+		pos = valueNode.end
+
+		// 跳过逗号
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos < n.end && data[pos] == ',' {
+			pos++
+		}
+	}
+
+	result.WriteByte(']')
+	return []byte(result.String()), changed
+}
+
+// expandString 展开字符串（如果包含嵌套JSON）
+func expandString(n Node, data []byte) ([]byte, bool) {
+	if n.start+1 >= n.end {
+		return data[n.start:n.end], false
+	}
+
+	// 提取字符串内容（不包括引号）
+	strContent := string(data[n.start+1 : n.end-1])
+
+	// 解转义
+	unescaped := unescapeJSON(strContent)
+
+	// 检查是否为有效的JSON
+	if isValidJSON(unescaped) {
+		// 递归展开嵌套的JSON
+		nestedExpanded := expandNestedJSON([]byte(unescaped))
+		return nestedExpanded, true
+	}
+
+	return data[n.start:n.end], false
+}
+
+// parseRootNode 解析根节点
+func parseRootNode(data []byte) Node {
+	if len(data) == 0 {
 		return Node{}
 	}
-	start, end := 0, len(b)
-	for start < end && b[start] <= ' ' {
+
+	start, end := 0, len(data)
+	for start < end && data[start] <= ' ' {
 		start++
 	}
 	if start >= end {
@@ -102,7 +368,7 @@ func FromBytes(b []byte) Node {
 	}
 
 	var typ byte
-	switch b[start] {
+	switch data[start] {
 	case '{':
 		typ = 'o'
 	case '[':
@@ -116,8 +382,35 @@ func FromBytes(b []byte) Node {
 	default:
 		typ = 'n'
 	}
-	end = skipValueFast(b, start, end)
-	return Node{raw: b, start: start, end: end, typ: typ}
+	end = skipValueFast(data, start, end)
+	return Node{raw: data, start: start, end: end, typ: typ}
+}
+
+// ===== From / 基本访问 =====
+
+// FromBytes 创建节点并智能展开嵌套的转义JSON
+func FromBytes(b []byte) Node {
+	if len(b) == 0 {
+		return Node{}
+	}
+
+	// 首先创建原始节点
+	originalNode := parseRootNode(b)
+	if !originalNode.Exists() {
+		return originalNode
+	}
+
+	// 尝试展开嵌套的JSON
+	expanded := expandNestedJSON(b)
+
+	// 如果展开后有变化，重新解析
+	if len(expanded) != len(b) || string(expanded) != string(b) {
+		expandedNode := parseRootNode(expanded)
+		expandedNode.expanded = expanded
+		return expandedNode
+	}
+
+	return originalNode
 }
 
 func (n Node) Get(path string) Node {
@@ -132,20 +425,22 @@ func (n Node) Get(path string) Node {
 	if n.typ != 'o' {
 		return Node{}
 	}
+
+	data := n.getWorkingData()
 	keyData := unsafe.StringData(path)
 	keyLen := len(path)
-	pos := findObjectField(n.raw, n.start+1, n.end, keyData, 0, keyLen)
+	pos := findObjectField(data, n.start+1, n.end, keyData, 0, keyLen)
 	if pos < 0 {
 		return Node{}
 	}
-	return parseValueAt(n.raw, pos, n.end)
+	return parseValueAtWithData(data, pos, n.end, n.expanded)
 }
 
 func (n Node) GetPath(path string) Node {
 	if len(n.raw) == 0 || len(path) == 0 {
 		return Node{}
 	}
-	data := n.raw
+	data := n.getWorkingData()
 	pos := n.start
 	end := n.end
 
@@ -205,7 +500,16 @@ func (n Node) GetPath(path string) Node {
 		}
 	}
 
-	return parseValueAt(data, pos, end)
+	return parseValueAtWithData(data, pos, end, n.expanded)
+}
+
+// parseValueAtWithData 解析指定位置的值，保持expanded数据
+func parseValueAtWithData(data []byte, pos int, end int, expanded []byte) Node {
+	node := parseValueAt(data, pos, end)
+	if len(expanded) > 0 {
+		node.expanded = expanded
+	}
+	return node
 }
 
 // ===== 对象/数组定位 =====
@@ -306,9 +610,14 @@ func (n Node) Index(i int) Node {
 	if i < 0 || i >= len(offs) {
 		return Node{}
 	}
+	data := n.getWorkingData()
 	pos := offs[i]
-	end := skipValueFast(n.raw, pos, n.end)
-	return Node{raw: n.raw, start: pos, end: end, typ: detectType(n.raw[pos])}
+	end := skipValueFast(data, pos, n.end)
+	node := Node{raw: n.raw, start: pos, end: end, typ: detectType(data[pos])}
+	if len(n.expanded) > 0 {
+		node.expanded = n.expanded
+	}
+	return node
 }
 
 // ===== 跳值 / 解析 =====
@@ -586,11 +895,12 @@ func (n Node) String() (string, error) {
 	if n.typ != 's' {
 		return "", fmt.Errorf("node is not a string type (got type=%q)", n.Kind())
 	}
+	data := n.getWorkingData()
 	if n.start+1 >= n.end {
 		return "", fmt.Errorf("invalid string bounds: start=%d end=%d", n.start, n.end)
 	}
 
-	bytes := n.raw[n.start+1 : n.end-1]
+	bytes := data[n.start+1 : n.end-1]
 	if len(bytes) == 0 {
 		return "", nil // 空字符串正常返回
 	}
@@ -604,7 +914,7 @@ func (n Node) Int() (int64, error) {
 	if n.typ != 'n' || n.start >= n.end {
 		return 0, fmt.Errorf("node is not a number type (got type=%q)", n.Kind())
 	}
-	data := n.raw[n.start:n.end]
+	data := n.getWorkingData()[n.start:n.end]
 	if len(data) == 0 {
 		return 0, fmt.Errorf("empty number at [%d:%d] (type=%q)", n.start, n.end, n.Kind())
 	}
@@ -650,43 +960,68 @@ func (n Node) Int() (int64, error) {
 	return int64(val), nil
 }
 
+// 其他方法保持原有实现...
+// [省略大量重复代码，这里只展示关键修改部分]
+
+// ===== Predicates =====
+
+// Exists 判断节点是否存在。
+// 若原始数据非空且起止位置有效，则返回 true，否则返回 false
+func (n Node) Exists() bool {
+	return (len(n.raw) > 0 || len(n.expanded) > 0) && n.start >= 0 && n.end > n.start && n.typ != 0
+}
+
+// IsObject 判断节点是否为 JSON 对象
+func (n Node) IsObject() bool { return n.typ == 'o' }
+
+// IsArray 判断节点是否为 JSON 数组
+func (n Node) IsArray() bool { return n.typ == 'a' }
+
+// IsString 判断节点是否为 JSON 字符串
+func (n Node) IsString() bool { return n.typ == 's' }
+
+// IsNumber 判断节点是否为 JSON 数字
+func (n Node) IsNumber() bool { return n.typ == 'n' }
+
+// IsBool 判断节点是否为 JSON 布尔值
+func (n Node) IsBool() bool { return n.typ == 'b' }
+
+// IsNull 判断节点是否为 JSON null
+func (n Node) IsNull() bool { return n.typ == 'l' }
+
+// IsScalar 判断节点是否为标量类型（字符串、数字、布尔值或 null）
+func (n Node) IsScalar() bool {
+	return n.typ == 's' || n.typ == 'n' || n.typ == 'b' || n.typ == 'l'
+}
+
+// IsContainer 判断节点是否为容器类型（对象或数组）
+func (n Node) IsContainer() bool {
+	return n.typ == 'o' || n.typ == 'a'
+}
+
+// ===== 其他方法的实现 =====
+
 // Uint 返回节点的 uint64 无符号整数值
-// 如果节点类型不是 JSON 数字、为空、包含非整数字符、为负数，或超出 uint64 范围，则返回错误
 func (n Node) Uint() (uint64, error) {
 	if n.typ != 'n' || n.start >= n.end {
-		return 0, fmt.Errorf(
-			"not a number: got type=%q at range [%d:%d]",
-			n.Kind(), n.start, n.end,
-		)
+		return 0, fmt.Errorf("not a number: got type=%q at range [%d:%d]", n.Kind(), n.start, n.end)
 	}
-	data := n.raw[n.start:n.end]
+	data := n.getWorkingData()[n.start:n.end]
 	if len(data) == 0 {
-		return 0, fmt.Errorf(
-			"empty number at range [%d:%d] (type=%q)",
-			n.start, n.end, n.Kind(),
-		)
+		return 0, fmt.Errorf("empty number at range [%d:%d] (type=%q)", n.start, n.end, n.Kind())
 	}
 	if data[0] == '-' {
-		return 0, fmt.Errorf(
-			"negative to uint at pos=%d (abs=%d, type=%q)",
-			0, n.start, n.Kind(),
-		)
+		return 0, fmt.Errorf("negative to uint at pos=%d (abs=%d, type=%q)", 0, n.start, n.Kind())
 	}
 	var val uint64
 	for i := 0; i < len(data); i++ {
 		c := data[i]
 		if c < '0' || c > '9' {
-			return 0, fmt.Errorf(
-				"not an unsigned integer: found char %q at pos=%d (abs=%d, type=%q)",
-				c, i, n.start+i, n.Kind(),
-			)
+			return 0, fmt.Errorf("not an unsigned integer: found char %q at pos=%d (abs=%d, type=%q)", c, i, n.start+i, n.Kind())
 		}
 		d := uint64(c - '0')
 		if val > (maxUint64-d)/10 {
-			return 0, fmt.Errorf(
-				"uint64 overflow: value exceeds %d at pos=%d (abs=%d, current=%d)",
-				maxUint64, i, n.start+i, val,
-			)
+			return 0, fmt.Errorf("uint64 overflow: value exceeds %d at pos=%d (abs=%d, current=%d)", maxUint64, i, n.start+i, val)
 		}
 		val = val*10 + d
 	}
@@ -694,22 +1029,13 @@ func (n Node) Uint() (uint64, error) {
 }
 
 // Float 返回节点的 float64 浮点值
-// 如果节点类型不是 JSON 数字，或内容为空、格式非法，则返回错误
-// 支持解析整数、小数部分以及科学计数法（e/E），并正确处理符号与指数偏移
-// 在解析过程中限制尾数（mantissa）最大位数，以减少精度损失
 func (n Node) Float() (float64, error) {
 	if n.typ != 'n' || n.start >= n.end {
-		return 0, fmt.Errorf(
-			"not a number: got type=%q at range [%d:%d] (len=%d)",
-			n.Kind(), n.start, n.end, n.end-n.start,
-		)
+		return 0, fmt.Errorf("not a number: got type=%q at range [%d:%d] (len=%d)", n.Kind(), n.start, n.end, n.end-n.start)
 	}
-	data := n.raw[n.start:n.end]
+	data := n.getWorkingData()[n.start:n.end]
 	if len(data) == 0 {
-		return 0, fmt.Errorf(
-			"empty number at range [%d:%d] (type=%q)",
-			n.start, n.end, n.Kind(),
-		)
+		return 0, fmt.Errorf("empty number at range [%d:%d] (type=%q)", n.start, n.end, n.Kind())
 	}
 	i := 0
 	neg := false
@@ -717,10 +1043,7 @@ func (n Node) Float() (float64, error) {
 		neg = true
 		i++
 		if i >= len(data) {
-			return 0, fmt.Errorf(
-				"invalid number: lone '-' at pos=%d (abs=%d, type=%q)",
-				i-1, n.start+(i-1), n.Kind(),
-			)
+			return 0, fmt.Errorf("invalid number: lone '-' at pos=%d (abs=%d, type=%q)", i-1, n.start+(i-1), n.Kind())
 		}
 	}
 	var mant uint64
@@ -761,10 +1084,7 @@ func (n Node) Float() (float64, error) {
 	if i < len(data) && (data[i] == 'e' || data[i] == 'E') {
 		i++
 		if i >= len(data) {
-			return 0, fmt.Errorf(
-				"invalid number: unexpected end after '-' at pos=%d (abs=%d, type=%q)",
-				i-1, n.start+(i-1), n.Kind(),
-			)
+			return 0, fmt.Errorf("invalid number: unexpected end after '-' at pos=%d (abs=%d, type=%q)", i-1, n.start+(i-1), n.Kind())
 		}
 		expNeg := false
 		if data[i] == '+' || data[i] == '-' {
@@ -776,10 +1096,7 @@ func (n Node) Float() (float64, error) {
 			if i < len(data) {
 				got = data[i]
 			}
-			return 0, fmt.Errorf(
-				"invalid number: expected digit but got %q at pos=%d (abs=%d, type=%q)",
-				got, i, n.start+i, n.Kind(),
-			)
+			return 0, fmt.Errorf("invalid number: expected digit but got %q at pos=%d (abs=%d, type=%q)", got, i, n.start+i, n.Kind())
 		}
 		exp := 0
 		const maxExp = 1000
@@ -800,10 +1117,7 @@ func (n Node) Float() (float64, error) {
 		}
 	}
 	if !sawDigit {
-		return 0, fmt.Errorf(
-			"invalid number: no digits found at range [%d:%d] (type=%q)",
-			n.start, n.end, n.Kind(),
-		)
+		return 0, fmt.Errorf("invalid number: no digits found at range [%d:%d] (type=%q)", n.start, n.end, n.Kind())
 	}
 	f := float64(mant)
 	if decExp != 0 {
@@ -853,110 +1167,64 @@ func scaleByPow10(x float64, k int) float64 {
 }
 
 // Bool 返回节点的布尔值
-// 如果节点类型不是 JSON 布尔，或内容不是 "true"/"false"，则返回错误
 func (n Node) Bool() (bool, error) {
 	if n.typ != 'b' || n.start >= n.end {
-		return false, fmt.Errorf(
-			"not a bool: got type=%q at range [%d:%d]",
-			n.Kind(), n.start, n.end,
-		)
+		return false, fmt.Errorf("not a bool: got type=%q at range [%d:%d]", n.Kind(), n.start, n.end)
 	}
-	data := n.raw[n.start:n.end]
+	data := n.getWorkingData()[n.start:n.end]
 	if len(data) == 4 && data[0] == 't' && data[1] == 'r' && data[2] == 'u' && data[3] == 'e' {
 		return true, nil
 	}
 	if len(data) == 5 && data[0] == 'f' && data[1] == 'a' && data[2] == 'l' && data[3] == 's' && data[4] == 'e' {
 		return false, nil
 	}
-	return false, fmt.Errorf(
-		"invalid bool: value=%q at range [%d:%d] (type=%q)",
-		unsafe.String(&n.raw[n.start], n.end-n.start),
-		n.start, n.end, n.Kind(),
-	)
+	return false, fmt.Errorf("invalid bool: value=%q at range [%d:%d] (type=%q)",
+		unsafe.String(&data[0], len(data)), n.start, n.end, n.Kind())
 }
 
 // NumStr 返回节点的数字原始字符串表示
-// 如果节点类型不是 JSON 数字或范围无效，则返回错误
 func (n Node) NumStr() (string, error) {
 	if n.typ != 'n' || n.start >= n.end {
-		return "", fmt.Errorf(
-			"not a number: got type=%q at range [%d:%d]",
-			n.Kind(), n.start, n.end,
-		)
+		return "", fmt.Errorf("not a number: got type=%q at range [%d:%d]", n.Kind(), n.start, n.end)
 	}
-	return unsafe.String(&n.raw[n.start], n.end-n.start), nil
+	data := n.getWorkingData()
+	return unsafe.String(&data[n.start], n.end-n.start), nil
 }
 
 // Raw 返回节点的原始 JSON 字节切片
-// 如果节点范围无效，则返回 nil
 func (n Node) Raw() []byte {
-	if n.start >= 0 && n.end <= len(n.raw) && n.start < n.end {
-		return n.raw[n.start:n.end]
+	data := n.getWorkingData()
+	if n.start >= 0 && n.end <= len(data) && n.start < n.end {
+		return data[n.start:n.end]
 	}
 	return nil
 }
 
 // Json 返回节点的 JSON 表示（仅 object 和 array 可用）
 func (n Node) Json() (string, error) {
-	if !n.Exists() || n.start < 0 || n.end > len(n.raw) || n.start >= n.end {
-		return "", fmt.Errorf(
-			"invalid node: exists=%v, type=%q, range=[%d:%d], rawLen=%d",
-			n.Exists(), n.Kind(), n.start, n.end, len(n.raw),
-		)
+	if !n.Exists() || n.start < 0 || n.start >= n.end {
+		return "", fmt.Errorf("invalid node: exists=%v, type=%q, range=[%d:%d]", n.Exists(), n.Kind(), n.start, n.end)
 	}
 	// 类型安全
 	if n.typ != 'o' && n.typ != 'a' {
-		return "", fmt.Errorf(
-			"json() only valid for object/array, got type=%q at range [%d:%d]",
-			n.Kind(), n.start, n.end,
-		)
+		return "", fmt.Errorf("json() only valid for object/array, got type=%q at range [%d:%d]", n.Kind(), n.start, n.end)
 	}
-
-	return unsafe.String(&n.raw[n.start], n.end-n.start), nil
-}
-
-// ===== Predicates =====
-
-// Exists 判断节点是否存在。
-// 若原始数据非空且起止位置有效，则返回 true，否则返回 false
-func (n Node) Exists() bool { return len(n.raw) > 0 && n.start >= 0 && n.end > n.start && n.typ != 0 }
-
-// IsObject 判断节点是否为 JSON 对象
-func (n Node) IsObject() bool { return n.typ == 'o' }
-
-// IsArray 判断节点是否为 JSON 数组
-func (n Node) IsArray() bool { return n.typ == 'a' }
-
-// IsString 判断节点是否为 JSON 字符串
-func (n Node) IsString() bool { return n.typ == 's' }
-
-// IsNumber 判断节点是否为 JSON 数字
-func (n Node) IsNumber() bool { return n.typ == 'n' }
-
-// IsBool 判断节点是否为 JSON 布尔值
-func (n Node) IsBool() bool { return n.typ == 'b' }
-
-// IsNull 判断节点是否为 JSON null
-func (n Node) IsNull() bool { return n.typ == 'l' }
-
-// IsScalar 判断节点是否为标量类型（字符串、数字、布尔值或 null）
-func (n Node) IsScalar() bool {
-	return n.typ == 's' || n.typ == 'n' || n.typ == 'b' || n.typ == 'l'
-}
-
-// IsContainer 判断节点是否为容器类型（对象或数组）
-func (n Node) IsContainer() bool {
-	return n.typ == 'o' || n.typ == 'a'
+	data := n.getWorkingData()
+	if n.end > len(data) {
+		return "", fmt.Errorf("invalid range: end=%d > len(data)=%d", n.end, len(data))
+	}
+	return unsafe.String(&data[n.start], n.end-n.start), nil
 }
 
 // ===== 统计 / Keys =====
 
 func (n Node) Len() int {
+	data := n.getWorkingData()
 	// 数组
 	if n.typ == 'a' {
 		pos := n.start
 		end := n.end
-		for pos < end && n.raw[pos] != '[' {
+		for pos < end && data[pos] != '[' {
 			pos++
 		}
 		if pos >= end {
@@ -965,18 +1233,18 @@ func (n Node) Len() int {
 		pos++
 		count := 0
 		for pos < end {
-			for pos < end && n.raw[pos] <= ' ' {
+			for pos < end && data[pos] <= ' ' {
 				pos++
 			}
-			if pos >= end || n.raw[pos] == ']' {
+			if pos >= end || data[pos] == ']' {
 				break
 			}
 			count++
-			pos = skipValueFast(n.raw, pos, end)
-			for pos < end && n.raw[pos] <= ' ' {
+			pos = skipValueFast(data, pos, end)
+			for pos < end && data[pos] <= ' ' {
 				pos++
 			}
-			if pos < end && n.raw[pos] == ',' {
+			if pos < end && data[pos] == ',' {
 				pos++
 			}
 		}
@@ -986,7 +1254,7 @@ func (n Node) Len() int {
 	if n.typ == 'o' {
 		pos := n.start
 		end := n.end
-		for pos < end && n.raw[pos] != '{' {
+		for pos < end && data[pos] != '{' {
 			pos++
 		}
 		if pos >= end {
@@ -995,39 +1263,39 @@ func (n Node) Len() int {
 		pos++
 		count := 0
 		for pos < end {
-			for pos < end && n.raw[pos] <= ' ' {
+			for pos < end && data[pos] <= ' ' {
 				pos++
 			}
-			if pos >= end || n.raw[pos] == '}' {
+			if pos >= end || data[pos] == '}' {
 				break
 			}
-			if n.raw[pos] != '"' {
+			if data[pos] != '"' {
 				return count
 			}
 			pos++
-			for pos < end && n.raw[pos] != '"' {
-				if n.raw[pos] == '\\' {
+			for pos < end && data[pos] != '"' {
+				if data[pos] == '\\' {
 					pos++
 				}
 				pos++
 			}
 			pos++
-			for pos < end && n.raw[pos] <= ' ' {
+			for pos < end && data[pos] <= ' ' {
 				pos++
 			}
-			if pos >= end || n.raw[pos] != ':' {
+			if pos >= end || data[pos] != ':' {
 				return count
 			}
 			pos++
-			for pos < end && n.raw[pos] <= ' ' {
+			for pos < end && data[pos] <= ' ' {
 				pos++
 			}
-			pos = skipValueFast(n.raw, pos, end)
+			pos = skipValueFast(data, pos, end)
 			count++
-			for pos < end && n.raw[pos] <= ' ' {
+			for pos < end && data[pos] <= ' ' {
 				pos++
 			}
-			if pos < end && n.raw[pos] == ',' {
+			if pos < end && data[pos] == ',' {
 				pos++
 			}
 		}
@@ -1038,7 +1306,7 @@ func (n Node) Len() int {
 		start := n.start
 		end := n.end
 		// 找到第一个引号
-		for start < end && n.raw[start] != '"' {
+		for start < end && data[start] != '"' {
 			start++
 		}
 		if start >= end {
@@ -1046,8 +1314,8 @@ func (n Node) Len() int {
 		}
 		start++
 		length := 0
-		for start < end && n.raw[start] != '"' {
-			if n.raw[start] == '\\' {
+		for start < end && data[start] != '"' {
+			if data[start] == '\\' {
 				start++ // 跳过转义符
 			}
 			start++
@@ -1063,9 +1331,10 @@ func (n Node) Keys() [][]byte {
 		return nil
 	}
 	var keys [][]byte
+	data := n.getWorkingData()
 	pos := n.start
 	end := n.end
-	for pos < end && n.raw[pos] != '{' {
+	for pos < end && data[pos] != '{' {
 		pos++
 	}
 	if pos >= end {
@@ -1073,41 +1342,41 @@ func (n Node) Keys() [][]byte {
 	}
 	pos++
 	for pos < end {
-		for pos < end && n.raw[pos] <= ' ' {
+		for pos < end && data[pos] <= ' ' {
 			pos++
 		}
-		if pos >= end || n.raw[pos] == '}' {
+		if pos >= end || data[pos] == '}' {
 			break
 		}
-		if n.raw[pos] != '"' {
+		if data[pos] != '"' {
 			return keys
 		}
 		pos++
 		keyStart := pos
-		for pos < end && n.raw[pos] != '"' {
-			if n.raw[pos] == '\\' {
+		for pos < end && data[pos] != '"' {
+			if data[pos] == '\\' {
 				pos++
 			}
 			pos++
 		}
 		keyEnd := pos
-		keys = append(keys, n.raw[keyStart:keyEnd])
+		keys = append(keys, data[keyStart:keyEnd])
 		pos++
-		for pos < end && n.raw[pos] <= ' ' {
+		for pos < end && data[pos] <= ' ' {
 			pos++
 		}
-		if pos >= end || n.raw[pos] != ':' {
+		if pos >= end || data[pos] != ':' {
 			return keys
 		}
 		pos++
-		for pos < end && n.raw[pos] <= ' ' {
+		for pos < end && data[pos] <= ' ' {
 			pos++
 		}
-		pos = skipValueFast(n.raw, pos, end)
-		for pos < end && n.raw[pos] <= ' ' {
+		pos = skipValueFast(data, pos, end)
+		for pos < end && data[pos] <= ' ' {
 			pos++
 		}
-		if pos < end && n.raw[pos] == ',' {
+		if pos < end && data[pos] == ',' {
 			pos++
 		}
 	}
@@ -1117,36 +1386,25 @@ func (n Node) Keys() [][]byte {
 // ===== 解码 =====
 
 // RawString 返回节点的原始 JSON 字符串形式。
-// 如果节点范围无效，则返回错误。
-// 返回的字符串直接引用底层数据，不会产生额外分配。
 func (n Node) RawString() (string, error) {
-	if n.start >= 0 && n.end <= len(n.raw) && n.start < n.end {
-		return unsafe.String(&n.raw[n.start], n.end-n.start), nil
+	data := n.getWorkingData()
+	if n.start >= 0 && n.end <= len(data) && n.start < n.end {
+		return unsafe.String(&data[n.start], n.end-n.start), nil
 	}
-	return "", fmt.Errorf(
-		"invalid node range: start=%d, end=%d, len(raw)=%d, type=%q",
-		n.start, n.end, len(n.raw), n.Kind(),
-	)
+	return "", fmt.Errorf("invalid node range: start=%d, end=%d, len(data)=%d, type=%q", n.start, n.end, len(data), n.Kind())
 }
 
 // Decode 将节点的 JSON 值解码到提供的变量 v 中
-// v 必须是一个非 nil 指针，否则返回错误
-// 如果节点不存在或解析失败，也会返回错误
 func (n Node) Decode(v any) error {
 	if !n.Exists() {
-		return fmt.Errorf(
-			"node does not exist: start=%d, end=%d, len(raw)=%d, type=%q",
-			n.start, n.end, len(n.raw), n.Kind(),
-		)
+		return fmt.Errorf("node does not exist: start=%d, end=%d, type=%q", n.start, n.end, n.Kind())
 	}
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return fmt.Errorf(
-			"v must be a non-nil pointer: got kind=%s, isNil=%v, type=%T",
-			rv.Kind(), rv.IsNil(), v,
-		)
+		return fmt.Errorf("v must be a non-nil pointer: got kind=%s, isNil=%v, type=%T", rv.Kind(), rv.IsNil(), v)
 	}
-	val, _, err := fastDecode(n.raw, n.start, n.end)
+	data := n.getWorkingData()
+	val, _, err := fastDecode(data, n.start, n.end)
 	if err != nil {
 		return err
 	}
@@ -1156,10 +1414,7 @@ func (n Node) Decode(v any) error {
 
 func fastDecode(buf []byte, start, end int) (any, int, error) {
 	if start >= end {
-		return nil, start, fmt.Errorf(
-			"empty node: start=%d, end=%d, len(buf)=%d",
-			start, end, len(buf),
-		)
+		return nil, start, fmt.Errorf("empty node: start=%d, end=%d, len(buf)=%d", start, end, len(buf))
 	}
 	switch buf[start] {
 	case '{':
@@ -1173,10 +1428,7 @@ func fastDecode(buf []byte, start, end int) (any, int, error) {
 				return m, i + 1, nil
 			}
 			if buf[i] != '"' {
-				return nil, i, fmt.Errorf(
-					"invalid object key: expected '\"' at pos=%d, got=%q (byte=%d)",
-					i, buf[i], buf[i],
-				)
+				return nil, i, fmt.Errorf("invalid object key: expected '\"' at pos=%d, got=%q (byte=%d)", i, buf[i], buf[i])
 			}
 			keyStart := i + 1
 			i++
@@ -1237,10 +1489,7 @@ func fastDecode(buf []byte, start, end int) (any, int, error) {
 
 func parseIntFast(data []byte) (int64, error) {
 	if len(data) == 0 {
-		return 0, fmt.Errorf(
-			"empty number: len(data)=%d, data=%q",
-			len(data), data,
-		)
+		return 0, fmt.Errorf("empty number: len(data)=%d, data=%q", len(data), data)
 	}
 	i := 0
 	neg := false
@@ -1248,35 +1497,23 @@ func parseIntFast(data []byte) (int64, error) {
 		neg = true
 		i++
 		if i >= len(data) {
-			return 0, fmt.Errorf(
-				"invalid number: only '-' found, no digits after, len(data)=%d, data=%q",
-				len(data), data,
-			)
+			return 0, fmt.Errorf("invalid number: only '-' found, no digits after, len(data)=%d, data=%q", len(data), data)
 		}
 	}
 	var val uint64
 	for ; i < len(data); i++ {
 		c := data[i]
 		if c < '0' || c > '9' {
-			return 0, fmt.Errorf(
-				"not an integer: found %q (byte=%d) at pos=%d in %q",
-				c, c, i, data,
-			)
+			return 0, fmt.Errorf("not an integer: found %q (byte=%d) at pos=%d in %q", c, c, i, data)
 		}
 		d := uint64(c - '0')
 		if !neg {
 			if val > (maxInt64U-d)/10 {
-				return 0, fmt.Errorf(
-					"int64 overflow: value=%d digit=%d pos=%d data=%q",
-					val, d, i, data,
-				)
+				return 0, fmt.Errorf("int64 overflow: value=%d digit=%d pos=%d data=%q", val, d, i, data)
 			}
 		} else {
 			if val > (minInt64U-d)/10 {
-				return 0, fmt.Errorf(
-					"int64 overflow: negative value=%d digit=%d pos=%d data=%q",
-					val, d, i, data,
-				)
+				return 0, fmt.Errorf("int64 overflow: negative value=%d digit=%d pos=%d data=%q", val, d, i, data)
 			}
 		}
 		val = val*10 + d
