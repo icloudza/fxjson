@@ -190,6 +190,6 @@ func BenchmarkJsonWithParam_fxjson(b *testing.B) {
 	node := FromBytes(sampleJSON)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = node.Json()
+		_, _ = node.Json()
 	}
 }

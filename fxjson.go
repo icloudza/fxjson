@@ -896,11 +896,23 @@ func (n Node) Raw() []byte {
 	return nil
 }
 
-func (n Node) Json() string {
+// Json 返回节点的 JSON 表示（仅 object 和 array 可用）
+func (n Node) Json() (string, error) {
 	if !n.Exists() || n.start < 0 || n.end > len(n.raw) || n.start >= n.end {
-		return ""
+		return "", fmt.Errorf(
+			"invalid node: exists=%v, type=%q, range=[%d:%d], rawLen=%d",
+			n.Exists(), n.Kind(), n.start, n.end, len(n.raw),
+		)
 	}
-	return string(n.raw[n.start:n.end])
+	// 类型安全
+	if n.typ != 'o' && n.typ != 'a' {
+		return "", fmt.Errorf(
+			"json() only valid for object/array, got type=%q at range [%d:%d]",
+			n.Kind(), n.start, n.end,
+		)
+	}
+
+	return unsafe.String(&n.raw[n.start], n.end-n.start), nil
 }
 
 // ===== Predicates =====
