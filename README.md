@@ -126,7 +126,7 @@ Second user: Bob
 
 ## 🔄 High-Performance Traversal
 
-### Object Traversal (Zero-allocation, 20x performance boost)
+### Object Traversal
 
 ```go
 profile := []byte(`{
@@ -165,7 +165,7 @@ experience: 5
 remote: true
 ```
 
-### Array Traversal (Zero-allocation, 67x performance boost)
+### Array Traversal
 
 ```go
 scores := []byte(`[95, 87, 92, 88, 96]`)
@@ -197,7 +197,7 @@ Score 5: 96
 Average score: 91.6
 ```
 
-### Deep Traversal (2x performance boost)
+### Deep Traversal
 
 ```go
 complexData := []byte(`{
