@@ -799,6 +799,99 @@ employees: [数组，长度=3]
 4. **并发安全**: 节点读取操作是并发安全的
 5. **Go版本**: 需要Go 1.18或更高版本
 
+## 📚 完整API参考
+
+### 核心方法
+
+#### 节点创建
+- `FromBytes(data []byte) Node` - 从JSON字节创建节点，自动展开嵌套JSON
+
+#### 基础访问
+- `Get(key string) Node` - 通过键获取对象字段
+- `GetPath(path string) Node` - 通过路径获取值 (如 "user.profile.name")
+- `Index(i int) Node` - 通过索引获取数组元素
+
+#### 类型检查
+- `Exists() bool` - 检查节点是否存在
+- `IsObject() bool` - 检查是否为JSON对象
+- `IsArray() bool` - 检查是否为JSON数组
+- `IsString() bool` - 检查是否为JSON字符串
+- `IsNumber() bool` - 检查是否为JSON数字
+- `IsBool() bool` - 检查是否为JSON布尔值
+- `IsNull() bool` - 检查是否为JSON null
+- `IsScalar() bool` - 检查是否为标量类型 (字符串、数字、布尔、null)
+- `IsContainer() bool` - 检查是否为容器类型 (对象、数组)
+- `Kind() NodeType` - 获取节点类型枚举
+- `Type() byte` - 获取内部类型字节
+
+#### 值提取
+- `String() (string, error)` - 获取字符串值
+- `Int() (int64, error)` - 获取整数值
+- `Uint() (uint64, error)` - 获取无符号整数值
+- `Float() (float64, error)` - 获取浮点数值
+- `Bool() (bool, error)` - 获取布尔值
+- `NumStr() (string, error)` - 获取原始JSON数字字符串
+- `FloatString() (string, error)` - 获取保持原始JSON格式的数字字符串
+- `Raw() []byte` - 获取此节点的原始JSON字节
+- `RawString() (string, error)` - 获取原始JSON字符串
+- `Json() (string, error)` - 获取JSON表示 (仅对象/数组)
+
+#### 大小和键值
+- `Len() int` - 获取长度 (数组元素、对象字段、字符串字符)
+- `Keys() [][]byte` - 获取对象键的字节切片
+- `GetAllKeys() []string` - 获取对象键的字符串切片
+- `GetAllValues() []Node` - 获取数组元素的节点切片
+- `ToMap() map[string]Node` - 将对象转换为映射
+- `ToSlice() []Node` - 将数组转换为切片
+
+#### 高性能遍历
+- `ForEach(fn ForEachFunc) bool` - 零分配遍历对象 (20倍更快)
+- `ArrayForEach(fn ArrayForEachFunc) bool` - 零分配遍历数组 (67倍更快)
+- `Walk(fn WalkFunc) bool` - 深度遍历整个JSON树 (2倍更快)
+
+#### 搜索和过滤
+- `FindInObject(predicate func(key string, value Node) bool) (string, Node, bool)` - 查找首个匹配的对象字段
+- `FindInArray(predicate func(index int, value Node) bool) (int, Node, bool)` - 查找首个匹配的数组元素
+- `FilterArray(predicate func(index int, value Node) bool) []Node` - 过滤数组元素
+- `FindByPath(path string) Node` - GetPath的别名
+
+#### 条件操作
+- `HasKey(key string) bool` - 检查对象是否有指定键
+- `GetKeyValue(key string, defaultValue Node) Node` - 获取值，支持默认值回退
+- `CountIf(predicate func(index int, value Node) bool) int` - 统计匹配的数组元素
+- `AllMatch(predicate func(index int, value Node) bool) bool` - 检查是否所有数组元素匹配
+- `AnyMatch(predicate func(index int, value Node) bool) bool` - 检查是否有数组元素匹配
+
+#### 解码
+- `Decode(v any) error` - 解码JSON到Go结构体/类型
+
+### 回调函数类型
+
+```go
+// 对象遍历回调
+type ForEachFunc func(key string, value Node) bool
+
+// 数组遍历回调  
+type ArrayForEachFunc func(index int, value Node) bool
+
+// 深度遍历回调
+type WalkFunc func(path string, node Node) bool
+```
+
+### 节点类型
+
+```go
+const (
+    TypeInvalid NodeType = 0    // 无效类型
+    TypeObject  NodeType = 'o'  // 对象类型
+    TypeArray   NodeType = 'a'  // 数组类型
+    TypeString  NodeType = 's'  // 字符串类型
+    TypeNumber  NodeType = 'n'  // 数字类型
+    TypeBool    NodeType = 'b'  // 布尔类型
+    TypeNull    NodeType = 'l'  // null类型
+)
+```
+
 ## 🤝 贡献
 
 欢迎提交Issue和Pull Request！

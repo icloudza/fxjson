@@ -1113,8 +1113,7 @@ func (n Node) Int() (int64, error) {
 	return int64(val), nil
 }
 
-// 其他方法保持原有实现...
-// [省略大量重复代码，这里只展示关键修改部分]
+// 其他数据类型转换方法...
 
 // ===== Predicates =====
 

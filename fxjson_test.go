@@ -380,6 +380,66 @@ func TestNumStr(t *testing.T) {
 	}
 }
 
+func TestFloatString(t *testing.T) {
+	// 测试FloatString()方法保持原始JSON格式
+	precisionJSON := []byte(`{
+		"price": 1.1,
+		"rating": 4.50,
+		"score": 95.0,
+		"percentage": 12.34,
+		"integer": 42,
+		"scientific": 1.234e-5,
+		"large": 1.23456789e10
+	}`)
+
+	node := FromBytes(precisionJSON)
+
+	tests := []struct {
+		key      string
+		expected string
+		hasError bool
+	}{
+		{"price", "1.1", false},
+		{"rating", "4.50", false},
+		{"score", "95.0", false},
+		{"percentage", "12.34", false},
+		{"integer", "42", false},
+		{"scientific", "1.234e-5", false},
+		{"large", "1.23456789e10", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.key, func(t *testing.T) {
+			result, err := node.Get(tt.key).FloatString()
+			if tt.hasError {
+				if err == nil {
+					t.Errorf("FloatString() should return error for key %q", tt.key)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("FloatString() returned unexpected error for key %q: %v", tt.key, err)
+				}
+				if result != tt.expected {
+					t.Errorf("FloatString() = %q, want %q", result, tt.expected)
+				}
+			}
+		})
+	}
+
+	// 测试非数字类型的错误处理
+	t.Run("non-number types", func(t *testing.T) {
+		testData := []byte(`{"string": "hello", "bool": true, "null": null, "array": [1,2,3]}`)
+		node := FromBytes(testData)
+
+		nonNumericKeys := []string{"string", "bool", "null", "array"}
+		for _, key := range nonNumericKeys {
+			if _, err := node.Get(key).FloatString(); err == nil {
+				t.Errorf("FloatString() should return error for non-numeric key %q", key)
+			}
+		}
+	})
+}
+
 // ===== 节点属性测试 =====
 
 func TestNodeTypes(t *testing.T) {

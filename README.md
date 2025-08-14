@@ -720,6 +720,99 @@ Node 3: Bob's info
 4. **Concurrency Safety**: Node read operations are concurrency-safe
 5. **Go Version**: Requires Go 1.18 or higher
 
+## 📚 Complete API Reference
+
+### Core Methods
+
+#### Node Creation
+- `FromBytes(data []byte) Node` - Create node from JSON bytes with automatic nested JSON expansion
+
+#### Basic Access
+- `Get(key string) Node` - Get object field by key
+- `GetPath(path string) Node` - Get value by path (e.g., "user.profile.name")
+- `Index(i int) Node` - Get array element by index
+
+#### Type Checking
+- `Exists() bool` - Check if node exists
+- `IsObject() bool` - Check if node is JSON object
+- `IsArray() bool` - Check if node is JSON array
+- `IsString() bool` - Check if node is JSON string
+- `IsNumber() bool` - Check if node is JSON number
+- `IsBool() bool` - Check if node is JSON boolean
+- `IsNull() bool` - Check if node is JSON null
+- `IsScalar() bool` - Check if node is scalar type (string, number, bool, null)
+- `IsContainer() bool` - Check if node is container type (object, array)
+- `Kind() NodeType` - Get node type as enum
+- `Type() byte` - Get internal type byte
+
+#### Value Extraction
+- `String() (string, error)` - Get string value
+- `Int() (int64, error)` - Get integer value
+- `Uint() (uint64, error)` - Get unsigned integer value
+- `Float() (float64, error)` - Get floating-point value
+- `Bool() (bool, error)` - Get boolean value
+- `NumStr() (string, error)` - Get raw number string from JSON
+- `FloatString() (string, error)` - Get number string preserving original JSON format
+- `Raw() []byte` - Get raw JSON bytes for this node
+- `RawString() (string, error)` - Get raw JSON as string
+- `Json() (string, error)` - Get JSON representation (objects/arrays only)
+
+#### Size and Keys
+- `Len() int` - Get length (array elements, object fields, string characters)
+- `Keys() [][]byte` - Get object keys as byte slices
+- `GetAllKeys() []string` - Get object keys as strings
+- `GetAllValues() []Node` - Get array elements as nodes
+- `ToMap() map[string]Node` - Convert object to map
+- `ToSlice() []Node` - Convert array to slice
+
+#### High-Performance Traversal
+- `ForEach(fn ForEachFunc) bool` - Traverse object with zero allocations (20x faster)
+- `ArrayForEach(fn ArrayForEachFunc) bool` - Traverse array with zero allocations (67x faster)
+- `Walk(fn WalkFunc) bool` - Deep traversal of entire JSON tree (2x faster)
+
+#### Search and Filter
+- `FindInObject(predicate func(key string, value Node) bool) (string, Node, bool)` - Find first matching object field
+- `FindInArray(predicate func(index int, value Node) bool) (int, Node, bool)` - Find first matching array element
+- `FilterArray(predicate func(index int, value Node) bool) []Node` - Filter array elements
+- `FindByPath(path string) Node` - Alias for GetPath
+
+#### Conditional Operations
+- `HasKey(key string) bool` - Check if object has key
+- `GetKeyValue(key string, defaultValue Node) Node` - Get value with default fallback
+- `CountIf(predicate func(index int, value Node) bool) int` - Count matching array elements
+- `AllMatch(predicate func(index int, value Node) bool) bool` - Check if all array elements match
+- `AnyMatch(predicate func(index int, value Node) bool) bool` - Check if any array element matches
+
+#### Decoding
+- `Decode(v any) error` - Decode JSON into Go struct/type
+
+### Callback Function Types
+
+```go
+// Object traversal callback
+type ForEachFunc func(key string, value Node) bool
+
+// Array traversal callback  
+type ArrayForEachFunc func(index int, value Node) bool
+
+// Deep traversal callback
+type WalkFunc func(path string, node Node) bool
+```
+
+### Node Types
+
+```go
+const (
+    TypeInvalid NodeType = 0
+    TypeObject  NodeType = 'o'
+    TypeArray   NodeType = 'a' 
+    TypeString  NodeType = 's'
+    TypeNumber  NodeType = 'n'
+    TypeBool    NodeType = 'b'
+    TypeNull    NodeType = 'l'
+)
+```
+
 ## 🤝 Contributing
 
 Issues and Pull Requests are welcome!
