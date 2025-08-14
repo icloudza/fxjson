@@ -174,7 +174,123 @@ func isValidJSON(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
-	return (s[0] == '{' && s[len(s)-1] == '}') || (s[0] == '[' && s[len(s)-1] == ']')
+	// 使用简化的验证，避免循环依赖
+	return isValidJSONSimple([]byte(s))
+}
+
+// isValidJSONSimple 简单的JSON格式验证
+func isValidJSONSimple(data []byte) bool {
+	if len(data) == 0 {
+		return false
+	}
+
+	start, end := 0, len(data)
+	for start < end && data[start] <= ' ' {
+		start++
+	}
+	if start >= end {
+		return false
+	}
+
+	// 使用简化的skipValue来检查
+	valueEnd := skipValueSimple(data, start, end)
+
+	// 检查是否读取了整个输入
+	pos := valueEnd
+	for pos < end && data[pos] <= ' ' {
+		pos++
+	}
+	return pos == end && valueEnd > start
+}
+
+// skipValueSimple 简化的值跳过函数，不会调用其他可能导致循环的函数
+func skipValueSimple(data []byte, pos int, end int) int {
+	if pos >= end {
+		return pos
+	}
+
+	switch data[pos] {
+	case '{':
+		pos++
+		depth := 1
+		for pos < end && depth > 0 {
+			if data[pos] == '"' {
+				pos = skipStringSimple(data, pos, end)
+			} else if data[pos] == '{' {
+				depth++
+				pos++
+			} else if data[pos] == '}' {
+				depth--
+				pos++
+			} else {
+				pos++
+			}
+		}
+		return pos
+	case '[':
+		pos++
+		depth := 1
+		for pos < end && depth > 0 {
+			if data[pos] == '"' {
+				pos = skipStringSimple(data, pos, end)
+			} else if data[pos] == '[' {
+				depth++
+				pos++
+			} else if data[pos] == ']' {
+				depth--
+				pos++
+			} else {
+				pos++
+			}
+		}
+		return pos
+	case '"':
+		return skipStringSimple(data, pos, end)
+	case 't':
+		if pos+4 <= end && string(data[pos:pos+4]) == "true" {
+			return pos + 4
+		}
+		return pos
+	case 'f':
+		if pos+5 <= end && string(data[pos:pos+5]) == "false" {
+			return pos + 5
+		}
+		return pos
+	case 'n':
+		if pos+4 <= end && string(data[pos:pos+4]) == "null" {
+			return pos + 4
+		}
+		return pos
+	default:
+		if data[pos] == '-' || (data[pos] >= '0' && data[pos] <= '9') {
+			// 跳过数字
+			pos++
+			for pos < end && ((data[pos] >= '0' && data[pos] <= '9') || data[pos] == '.' || data[pos] == 'e' || data[pos] == 'E' || data[pos] == '+' || data[pos] == '-') {
+				pos++
+			}
+			return pos
+		}
+		return pos // 无效字符
+	}
+}
+
+// skipStringSimple 简化的字符串跳过
+func skipStringSimple(data []byte, pos int, end int) int {
+	if pos >= end || data[pos] != '"' {
+		return pos
+	}
+	pos++ // 跳过开始引号
+	for pos < end {
+		if data[pos] == '"' {
+			return pos + 1 // 跳过结束引号
+		}
+		if data[pos] == '\\' && pos+1 < end {
+			pos += 2 // 跳过转义字符
+		} else {
+			pos++
+		}
+	}
+	return pos
 }
 
 // expandNestedJSON 递归展开嵌套的JSON字符串
@@ -380,10 +496,42 @@ func parseRootNode(data []byte) Node {
 	case 'n':
 		typ = 'l'
 	default:
-		typ = 'n'
+		if data[start] == '-' || (data[start] >= '0' && data[start] <= '9') {
+			typ = 'n'
+		} else {
+			return Node{} // 无效的开始字符
+		}
 	}
-	end = skipValueFast(data, start, end)
-	return Node{raw: data, start: start, end: end, typ: typ}
+
+	valueEnd := skipValueFast(data, start, end)
+
+	// 验证JSON是否完整
+	if valueEnd == start {
+		return Node{} // skipValueFast没有前进，说明格式错误
+	}
+
+	// 对于对象和数组，需要特别检查是否真正完整
+	if typ == 'o' {
+		if valueEnd > end || (valueEnd > 0 && data[valueEnd-1] != '}') {
+			return Node{} // 对象不完整
+		}
+	}
+	if typ == 'a' {
+		if valueEnd > end || (valueEnd > 0 && data[valueEnd-1] != ']') {
+			return Node{} // 数组不完整
+		}
+	}
+
+	// 检查是否有多余的字符（除了空白）
+	pos := valueEnd
+	for pos < end && data[pos] <= ' ' {
+		pos++
+	}
+	if pos < end {
+		return Node{} // 有多余的非空白字符
+	}
+
+	return Node{raw: data, start: start, end: valueEnd, typ: typ}
 }
 
 // ===== From / 基本访问 =====
@@ -664,7 +812,7 @@ func skipValueFast(data []byte, pos int, end int) int {
 						goto contObj // 结束当前字符串，继续对象扫描
 					case '\\':
 						if pos+1 >= end {
-							return end
+							return pos // 不完整的转义
 						}
 						if data[pos+1] == 'u' && pos+5 < end {
 							pos += 6
@@ -675,7 +823,7 @@ func skipValueFast(data []byte, pos int, end int) int {
 						pos++
 					}
 				}
-				return end
+				return pos // 不完整的字符串
 			case '{':
 				depth++
 				pos++
@@ -685,6 +833,9 @@ func skipValueFast(data []byte, pos int, end int) int {
 			default:
 				pos++
 			}
+		}
+		if depth > 0 {
+			return pos // 不完整的对象
 		}
 		return pos
 	contObj:
@@ -847,44 +998,40 @@ func parseValueAt(data []byte, pos int, end int) Node {
 	if pos < 0 || pos >= end {
 		return Node{}
 	}
-	var typ byte
+
+	c := data[pos]
 	valStart := pos
-	valEnd := pos
-	switch data[pos] {
+
+	switch c {
 	case '"':
-		typ = 's'
-		valEnd = pos + 1
-		for valEnd < end && data[valEnd] != '"' {
+		// 字符串：快速跳过到结尾
+		valEnd := pos + 1
+		for valEnd < end {
+			if data[valEnd] == '"' {
+				return Node{raw: data, start: valStart, end: valEnd + 1, typ: 's'}
+			}
 			if data[valEnd] == '\\' {
 				valEnd++
 			}
 			valEnd++
 		}
-		if valEnd < end {
-			valEnd++
-		}
+		return Node{raw: data, start: valStart, end: end, typ: 's'}
 	case '{':
-		typ = 'o'
-		valEnd = skipValueFast(data, pos, end)
+		return Node{raw: data, start: valStart, end: skipValueFast(data, pos, end), typ: 'o'}
 	case '[':
-		typ = 'a'
-		valEnd = skipValueFast(data, pos, end)
+		return Node{raw: data, start: valStart, end: skipValueFast(data, pos, end), typ: 'a'}
 	case 't':
-		typ = 'b'
-		valEnd = pos + 4
+		return Node{raw: data, start: valStart, end: pos + 4, typ: 'b'}
 	case 'f':
-		typ = 'b'
-		valEnd = pos + 5
+		return Node{raw: data, start: valStart, end: pos + 5, typ: 'b'}
 	case 'n':
-		typ = 'l'
-		valEnd = pos + 4
+		return Node{raw: data, start: valStart, end: pos + 4, typ: 'l'}
 	default:
-		if data[pos] == '-' || (data[pos] >= '0' && data[pos] <= '9') {
-			typ = 'n'
-			valEnd = skipValueFast(data, pos, end)
+		if c == '-' || (c >= '0' && c <= '9') {
+			return Node{raw: data, start: valStart, end: skipValueFast(data, pos, end), typ: 'n'}
 		}
 	}
-	return Node{raw: data, start: valStart, end: valEnd, typ: typ}
+	return Node{}
 }
 
 // ===== 字面量取值 =====
@@ -905,7 +1052,13 @@ func (n Node) String() (string, error) {
 		return "", nil // 空字符串正常返回
 	}
 
-	return unsafe.String(&bytes[0], len(bytes)), nil
+	str := unsafe.String(&bytes[0], len(bytes))
+	// 如果包含转义字符，需要解转义
+	if strings.Contains(str, "\\") {
+		return unescapeJSON(str), nil
+	}
+
+	return str, nil
 }
 
 // Int 返回节点的 int64 整数值
@@ -1191,6 +1344,16 @@ func (n Node) NumStr() (string, error) {
 	return unsafe.String(&data[n.start], n.end-n.start), nil
 }
 
+// FloatString 返回数字的字符串表示，保持原始JSON格式的精度
+// 优先返回原始JSON中的数字字符串，避免浮点数格式化问题
+func (n Node) FloatString() (string, error) {
+	if n.typ != 'n' || n.start >= n.end {
+		return "", fmt.Errorf("not a number: got type=%q at range [%d:%d]", n.Kind(), n.start, n.end)
+	}
+	// 直接返回原始数字字符串，保持JSON中的精度格式
+	return n.NumStr()
+}
+
 // Raw 返回节点的原始 JSON 字节切片
 func (n Node) Raw() []byte {
 	data := n.getWorkingData()
@@ -1400,8 +1563,11 @@ func (n Node) Decode(v any) error {
 		return fmt.Errorf("node does not exist: start=%d, end=%d, type=%q", n.start, n.end, n.Kind())
 	}
 	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return fmt.Errorf("v must be a non-nil pointer: got kind=%s, isNil=%v, type=%T", rv.Kind(), rv.IsNil(), v)
+	if rv.Kind() != reflect.Ptr {
+		return fmt.Errorf("v must be a pointer: got kind=%s, type=%T", rv.Kind(), v)
+	}
+	if rv.IsNil() {
+		return fmt.Errorf("v must be a non-nil pointer: type=%T", v)
 	}
 	data := n.getWorkingData()
 	val, _, err := fastDecode(data, n.start, n.end)
@@ -1416,74 +1582,98 @@ func fastDecode(buf []byte, start, end int) (any, int, error) {
 	if start >= end {
 		return nil, start, fmt.Errorf("empty node: start=%d, end=%d, len(buf)=%d", start, end, len(buf))
 	}
+
+	// 使用skipValueFast来确定值的边界，然后递归解析
+	valueEnd := skipValueFast(buf, start, end)
+	if valueEnd == start {
+		return nil, start, fmt.Errorf("invalid JSON at position %d", start)
+	}
+
 	switch buf[start] {
 	case '{':
 		m := make(map[string]any)
 		i := start + 1
-		for {
-			for i < end && (buf[i] <= ' ' || buf[i] == ',') {
+		for i < valueEnd-1 {
+			// 跳过空白
+			for i < valueEnd-1 && buf[i] <= ' ' {
 				i++
 			}
-			if i >= end || buf[i] == '}' {
-				return m, i + 1, nil
+			if i >= valueEnd-1 {
+				break
 			}
+
+			// 解析键
 			if buf[i] != '"' {
-				return nil, i, fmt.Errorf("invalid object key: expected '\"' at pos=%d, got=%q (byte=%d)", i, buf[i], buf[i])
+				return nil, i, fmt.Errorf("expected key at position %d", i)
 			}
-			keyStart := i + 1
-			i++
-			for i < end && buf[i] != '"' {
+			keyEnd := skipValueFast(buf, i, valueEnd)
+			key := unsafe.String(&buf[i+1], keyEnd-i-2)
+			i = keyEnd
+
+			// 跳过空白和冒号
+			for i < valueEnd-1 && (buf[i] <= ' ' || buf[i] == ':') {
 				i++
 			}
-			key := unsafe.String(&buf[keyStart], i-keyStart)
-			i++
-			for i < end && (buf[i] <= ' ' || buf[i] == ':') {
-				i++
-			}
-			val, ni, err := fastDecode(buf, i, end)
+
+			// 解析值
+			val, ni, err := fastDecode(buf, i, valueEnd)
 			if err != nil {
 				return nil, ni, err
 			}
 			m[key] = val
 			i = ni
+
+			// 跳过逗号
+			for i < valueEnd-1 && (buf[i] <= ' ' || buf[i] == ',') {
+				i++
+			}
 		}
+		return m, valueEnd, nil
+
 	case '[':
 		arr := make([]any, 0)
 		i := start + 1
-		for {
-			for i < end && (buf[i] <= ' ' || buf[i] == ',') {
+		for i < valueEnd-1 {
+			// 跳过空白
+			for i < valueEnd-1 && buf[i] <= ' ' {
 				i++
 			}
-			if i >= end || buf[i] == ']' {
-				return arr, i + 1, nil
+			if i >= valueEnd-1 {
+				break
 			}
-			val, ni, err := fastDecode(buf, i, end)
+
+			// 解析值
+			val, ni, err := fastDecode(buf, i, valueEnd)
 			if err != nil {
 				return nil, ni, err
 			}
 			arr = append(arr, val)
 			i = ni
+
+			// 跳过逗号
+			for i < valueEnd-1 && (buf[i] <= ' ' || buf[i] == ',') {
+				i++
+			}
 		}
+		return arr, valueEnd, nil
+
 	case '"':
-		str := unsafe.String(&buf[start+1], end-start-2)
-		return str, end, nil
+		str := unsafe.String(&buf[start+1], valueEnd-start-2)
+		return str, valueEnd, nil
+
 	case 't':
-		return true, start + 4, nil
+		return true, valueEnd, nil
+
 	case 'f':
-		return false, start + 5, nil
+		return false, valueEnd, nil
+
 	case 'n':
-		return nil, start + 4, nil
+		return nil, valueEnd, nil
+
 	default:
-		numEnd := start
-		for numEnd < end && (buf[numEnd] == '.' || buf[numEnd] == '-' || buf[numEnd] == '+' ||
-			(buf[numEnd] >= '0' && buf[numEnd] <= '9') || buf[numEnd] == 'e' || buf[numEnd] == 'E') {
-			numEnd++
-		}
-		if iv, err := parseIntFast(buf[start:numEnd]); err == nil {
-			return iv, numEnd, nil
-		}
-		fv := parseFloatFast(buf[start:numEnd])
-		return fv, numEnd, nil
+		// 数字
+		fv := parseFloatFast(buf[start:valueEnd])
+		return fv, valueEnd, nil
 	}
 }
 
@@ -1641,4 +1831,794 @@ func detectType(c byte) byte {
 	default:
 		return 'n'
 	}
+}
+
+// ===== 遍历相关接口和类型 =====
+
+// ForEachFunc 对象遍历回调函数类型
+// key: 对象键名, value: 对象值节点
+// 返回 false 可以提前终止遍历
+type ForEachFunc func(key string, value Node) bool
+
+// ArrayForEachFunc 数组遍历回调函数类型
+// index: 数组索引, value: 数组元素节点
+// 返回 false 可以提前终止遍历
+type ArrayForEachFunc func(index int, value Node) bool
+
+// ===== 对象遍历 =====
+
+// ForEach 遍历对象的所有键值对（极限优化版本）
+// 只有当节点是对象类型时才会执行遍历，否则直接返回
+// 遍历过程中如果回调函数返回 false，则提前终止遍历
+func (n Node) ForEach(fn ForEachFunc) {
+	if n.typ != 'o' || fn == nil {
+		return
+	}
+
+	data := n.getWorkingData()
+	pos := n.start + 1 // 直接跳过 '{'
+	end := n.end
+	endMinus1 := end - 1 // 预计算边界
+
+	// 批处理优化：预分配键值对缓冲区
+	type keyValuePair struct {
+		keyStart, keyEnd     int
+		valueStart, valueEnd int
+		valueType            byte
+	}
+
+	// 首先快速扫描收集所有键值对位置（避免重复遍历）
+	var pairs [32]keyValuePair // 栈分配，避免堆分配
+	pairCount := 0
+	scanPos := pos
+
+	for scanPos < endMinus1 && pairCount < 32 {
+		// 快速空白跳过
+		for scanPos < endMinus1 && data[scanPos] <= ' ' {
+			scanPos++
+		}
+		if scanPos >= endMinus1 || data[scanPos] == '}' {
+			break
+		}
+
+		// 快速键解析
+		if data[scanPos] != '"' {
+			break
+		}
+		scanPos++
+		keyStart := scanPos
+
+		// 优化键扫描：大部分键没有转义字符
+		for scanPos < end && data[scanPos] != '"' {
+			if data[scanPos] == '\\' {
+				scanPos += 2 // 跳过转义
+			} else {
+				scanPos++
+			}
+		}
+		keyEnd := scanPos
+		scanPos++ // skip closing quote
+
+		// 快速冒号跳过
+		for scanPos < end && data[scanPos] <= ' ' {
+			scanPos++
+		}
+		if scanPos >= end || data[scanPos] != ':' {
+			break
+		}
+		scanPos++
+		for scanPos < end && data[scanPos] <= ' ' {
+			scanPos++
+		}
+
+		// 记录值位置
+		valueStart := scanPos
+		valueEnd := skipValueFastInline(data, scanPos, end)
+		if valueEnd <= scanPos {
+			break
+		}
+
+		// 存储键值对信息
+		pairs[pairCount] = keyValuePair{
+			keyStart:   keyStart,
+			keyEnd:     keyEnd,
+			valueStart: valueStart,
+			valueEnd:   valueEnd,
+			valueType:  detectType(data[valueStart]),
+		}
+		pairCount++
+		scanPos = valueEnd
+
+		// 快速逗号跳过
+		for scanPos < end && data[scanPos] <= ' ' {
+			scanPos++
+		}
+		if scanPos < end && data[scanPos] == ',' {
+			scanPos++
+		}
+	}
+
+	// 批量处理所有键值对，减少函数调用开销
+	for i := 0; i < pairCount; i++ {
+		pair := pairs[i]
+
+		// 创建键字符串（零拷贝）
+		key := unsafe.String(&data[pair.keyStart], pair.keyEnd-pair.keyStart)
+
+		// 创建值节点
+		valueNode := Node{
+			raw:      n.raw,
+			start:    pair.valueStart,
+			end:      pair.valueEnd,
+			typ:      pair.valueType,
+			expanded: n.expanded,
+		}
+
+		if !fn(key, valueNode) {
+			break
+		}
+	}
+
+	// 如果有超过32个键值对，回退到流式处理
+	if pairCount == 32 && scanPos < endMinus1 {
+		pos = scanPos
+		for pos < endMinus1 {
+			// 继续处理剩余的键值对
+			for pos < endMinus1 && data[pos] <= ' ' {
+				pos++
+			}
+			if pos >= endMinus1 || data[pos] == '}' {
+				break
+			}
+
+			if data[pos] != '"' {
+				break
+			}
+			pos++
+			keyStart := pos
+
+			for pos < end && data[pos] != '"' {
+				if data[pos] == '\\' {
+					pos += 2
+				} else {
+					pos++
+				}
+			}
+			keyEnd := pos
+			pos++
+
+			for pos < end && data[pos] <= ' ' {
+				pos++
+			}
+			if pos >= end || data[pos] != ':' {
+				break
+			}
+			pos++
+			for pos < end && data[pos] <= ' ' {
+				pos++
+			}
+
+			valueStart := pos
+			valueEnd := skipValueFastInline(data, pos, end)
+			if valueEnd <= pos {
+				break
+			}
+
+			valueNode := Node{
+				raw:      n.raw,
+				start:    valueStart,
+				end:      valueEnd,
+				typ:      detectType(data[valueStart]),
+				expanded: n.expanded,
+			}
+
+			key := unsafe.String(&data[keyStart], keyEnd-keyStart)
+			if !fn(key, valueNode) {
+				break
+			}
+
+			pos = valueEnd
+			for pos < end && data[pos] <= ' ' {
+				pos++
+			}
+			if pos < end && data[pos] == ',' {
+				pos++
+			}
+		}
+	}
+}
+
+// skipValueFastInline 内联优化的值跳过函数
+func skipValueFastInline(data []byte, pos int, end int) int {
+	if pos >= end {
+		return pos
+	}
+
+	c := data[pos]
+	switch c {
+	case '{', '[':
+		pos++
+		depth := 1
+
+		for pos < end && depth > 0 {
+			c = data[pos]
+			if c == '"' {
+				// 快速字符串跳过
+				pos++
+				for pos < end {
+					if data[pos] == '"' {
+						pos++
+						break
+					}
+					if data[pos] == '\\' {
+						pos += 2
+					} else {
+						pos++
+					}
+				}
+			} else if c == '{' || c == '[' {
+				depth++
+				pos++
+			} else if c == '}' || c == ']' {
+				depth--
+				pos++
+			} else {
+				pos++
+			}
+		}
+		return pos
+
+	case '"':
+		pos++
+		for pos < end {
+			if data[pos] == '"' {
+				return pos + 1
+			}
+			if data[pos] == '\\' {
+				pos += 2
+				if pos > end { // 防止转义字符越界
+					return end
+				}
+			} else {
+				pos++
+			}
+		}
+		return pos
+
+	case 't':
+		if pos+4 <= end {
+			return pos + 4
+		}
+		return end
+	case 'f':
+		if pos+5 <= end {
+			return pos + 5
+		}
+		return end
+	case 'n':
+		if pos+4 <= end {
+			return pos + 4
+		}
+		return end
+
+	default:
+		// 数字
+		if c == '-' || (c >= '0' && c <= '9') {
+			pos++
+			for pos < end {
+				c = data[pos]
+				if (c >= '0' && c <= '9') || c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-' {
+					pos++
+				} else {
+					break
+				}
+			}
+		}
+		return pos
+	}
+}
+
+// ===== 数组遍历 =====
+
+// ArrayForEach 遍历数组的所有元素（极限优化版本）
+// 只有当节点是数组类型时才会执行遍历，否则直接返回
+// 遍历过程中如果回调函数返回 false，则提前终止遍历
+func (n Node) ArrayForEach(fn ArrayForEachFunc) {
+	if n.typ != 'a' || fn == nil {
+		return
+	}
+
+	// 尝试使用缓存的数组偏移
+	offsets := buildArrOffsetsCached(n)
+	if len(offsets) > 0 {
+		// 使用缓存的偏移进行高速遍历
+		data := n.getWorkingData()
+		for i, offset := range offsets {
+			valueEnd := skipValueFastInline(data, offset, n.end)
+			valueNode := Node{
+				raw:      n.raw,
+				start:    offset,
+				end:      valueEnd,
+				typ:      detectType(data[offset]),
+				expanded: n.expanded,
+			}
+
+			if !fn(i, valueNode) {
+				break
+			}
+		}
+		return
+	}
+
+	// 回退到内联解析（用于没有缓存的情况）
+	data := n.getWorkingData()
+	pos := n.start + 1 // 直接跳过 '['
+	end := n.end
+	index := 0
+
+	// 预计算常用边界，减少条件检查
+	endMinus1 := end - 1
+
+	for pos < endMinus1 {
+		// 极致优化的空白跳过
+		for pos < endMinus1 && data[pos] <= ' ' {
+			pos++
+		}
+		if pos >= endMinus1 || data[pos] == ']' {
+			break
+		}
+
+		// 批量处理：检查是否是简单数字，可以快速跳过
+		valueStart := pos
+		c := data[pos]
+		var valueEnd int
+
+		if c >= '0' && c <= '9' || c == '-' {
+			// 数字快速路径
+			pos++
+			for pos < end && data[pos] >= '0' && data[pos] <= '9' {
+				pos++
+			}
+			// 检查是否有小数点或指数
+			if pos < end && (data[pos] == '.' || data[pos] == 'e' || data[pos] == 'E') {
+				valueEnd = skipValueFastInline(data, valueStart, end)
+			} else {
+				valueEnd = pos
+			}
+		} else {
+			// 其他类型使用内联跳过
+			valueEnd = skipValueFastInline(data, pos, end)
+		}
+
+		if valueEnd <= pos {
+			break
+		}
+
+		// 批量创建节点，减少分支
+		valueNode := Node{
+			raw:      n.raw,
+			start:    valueStart,
+			end:      valueEnd,
+			typ:      detectType(data[valueStart]),
+			expanded: n.expanded,
+		}
+
+		if !fn(index, valueNode) {
+			break
+		}
+
+		pos = valueEnd
+		index++
+
+		// 极致优化的逗号跳过
+		for pos < end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos < end && data[pos] == ',' {
+			pos++
+		}
+	}
+}
+
+// ===== 批量获取方法 =====
+
+// GetAllKeys 返回对象的所有键名（字符串形式）
+func (n Node) GetAllKeys() []string {
+	if n.typ != 'o' {
+		return nil
+	}
+
+	var keys []string
+	n.ForEach(func(key string, value Node) bool {
+		keys = append(keys, key)
+		return true
+	})
+	return keys
+}
+
+// GetAllValues 返回数组的所有元素节点
+func (n Node) GetAllValues() []Node {
+	if n.typ != 'a' {
+		return nil
+	}
+
+	var values []Node
+	n.ArrayForEach(func(index int, value Node) bool {
+		values = append(values, value)
+		return true
+	})
+	return values
+}
+
+// ToMap 将对象节点转换为 map[string]Node
+func (n Node) ToMap() map[string]Node {
+	if n.typ != 'o' {
+		return nil
+	}
+
+	result := make(map[string]Node)
+	n.ForEach(func(key string, value Node) bool {
+		result[key] = value
+		return true
+	})
+	return result
+}
+
+// ToSlice 将数组节点转换为 []Node
+func (n Node) ToSlice() []Node {
+	if n.typ != 'a' {
+		return nil
+	}
+	return n.GetAllValues()
+}
+
+// ===== 条件查找方法 =====
+
+// FindInObject 在对象中查找满足条件的第一个键值对
+func (n Node) FindInObject(predicate func(key string, value Node) bool) (string, Node, bool) {
+	if n.typ != 'o' || predicate == nil {
+		return "", Node{}, false
+	}
+
+	var foundKey string
+	var foundValue Node
+	found := false
+
+	n.ForEach(func(key string, value Node) bool {
+		if predicate(key, value) {
+			foundKey = key
+			foundValue = value
+			found = true
+			return false // 找到后停止遍历
+		}
+		return true
+	})
+
+	return foundKey, foundValue, found
+}
+
+// FindInArray 在数组中查找满足条件的第一个元素
+func (n Node) FindInArray(predicate func(index int, value Node) bool) (int, Node, bool) {
+	if n.typ != 'a' || predicate == nil {
+		return -1, Node{}, false
+	}
+
+	var foundIndex int = -1
+	var foundValue Node
+	found := false
+
+	n.ArrayForEach(func(index int, value Node) bool {
+		if predicate(index, value) {
+			foundIndex = index
+			foundValue = value
+			found = true
+			return false // 找到后停止遍历
+		}
+		return true
+	})
+
+	return foundIndex, foundValue, found
+}
+
+// FilterArray 过滤数组元素，返回满足条件的所有元素
+func (n Node) FilterArray(predicate func(index int, value Node) bool) []Node {
+	if n.typ != 'a' || predicate == nil {
+		return nil
+	}
+
+	var result []Node
+	n.ArrayForEach(func(index int, value Node) bool {
+		if predicate(index, value) {
+			result = append(result, value)
+		}
+		return true
+	})
+
+	return result
+}
+
+// ===== 深度遍历方法 =====
+
+// WalkFunc 深度遍历回调函数类型
+// path: 当前节点的路径（如 "data.notes[0].comments_count"）
+// node: 当前节点
+// 返回 false 可以跳过当前节点的子节点遍历
+type WalkFunc func(path string, node Node) bool
+
+// walkItem 表示遍历栈中的一个项目
+type walkItem struct {
+	node Node
+	path string
+}
+
+// Walk 深度优先遍历整个JSON树（零分配优化实现）
+func (n Node) Walk(fn WalkFunc) {
+	if fn == nil || !n.Exists() {
+		return
+	}
+
+	// 使用显式栈避免递归开销，预分配足够大的容量
+	stack := make([]walkItem, 0, 64)
+	stack = append(stack, walkItem{node: n, path: ""})
+
+	// 预分配大容量避免扩容
+	var pathBuilder strings.Builder
+	pathBuilder.Grow(512)
+
+	// 复用字节缓冲区避免重复分配
+	var pathBytes [512]byte
+
+	for len(stack) > 0 {
+		// 出栈
+		current := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		// 调用回调函数
+		if !fn(current.path, current.node) {
+			continue // 跳过子节点
+		}
+
+		// 处理子节点（直接内联遍历避免额外分配）
+		switch current.node.typ {
+		case 'o':
+			// 对象：直接内联遍历，避免GetAllKeys()的分配
+			n := current.node
+			data := n.getWorkingData()
+			pos := n.start + 1
+			end := n.end
+			pathLen := len(current.path)
+
+			// 收集键值对（逆序）
+			type keyValue struct {
+				key   string
+				value Node
+			}
+			var pairs []keyValue
+
+			for pos < end-1 {
+				// 跳过空白
+				for pos < end && data[pos] <= ' ' {
+					pos++
+				}
+				if pos >= end || data[pos] == '}' {
+					break
+				}
+
+				// 解析键
+				if data[pos] != '"' {
+					break
+				}
+				pos++
+				keyStart := pos
+				for pos < end && data[pos] != '"' {
+					if data[pos] == '\\' {
+						pos += 2
+					} else {
+						pos++
+					}
+				}
+				keyEnd := pos
+				pos++ // skip closing quote
+
+				key := unsafe.String(&data[keyStart], keyEnd-keyStart)
+
+				// 跳过冒号
+				for pos < end && data[pos] <= ' ' {
+					pos++
+				}
+				if pos < end && data[pos] == ':' {
+					pos++
+				}
+				for pos < end && data[pos] <= ' ' {
+					pos++
+				}
+
+				// 解析值
+				valueStart := pos
+				valueEnd := skipValueFastInline(data, pos, end)
+				if valueEnd <= pos {
+					break
+				}
+
+				value := Node{
+					raw:      n.raw,
+					start:    valueStart,
+					end:      valueEnd,
+					typ:      detectType(data[valueStart]),
+					expanded: n.expanded,
+				}
+
+				pairs = append(pairs, keyValue{key: key, value: value})
+				pos = valueEnd
+
+				// 跳过逗号
+				for pos < end && data[pos] <= ' ' {
+					pos++
+				}
+				if pos < end && data[pos] == ',' {
+					pos++
+				}
+			}
+
+			// 逆序添加到栈
+			for i := len(pairs) - 1; i >= 0; i-- {
+				pair := pairs[i]
+
+				// 使用字节缓冲区构建路径，避免字符串分配
+				pathPos := 0
+				if pathLen > 0 {
+					copy(pathBytes[pathPos:], current.path)
+					pathPos += pathLen
+					pathBytes[pathPos] = '.'
+					pathPos++
+				}
+				copy(pathBytes[pathPos:], pair.key)
+				pathPos += len(pair.key)
+
+				newPath := string(pathBytes[:pathPos])
+				stack = append(stack, walkItem{
+					node: pair.value,
+					path: newPath,
+				})
+			}
+
+		case 'a':
+			// 数组：直接内联遍历
+			n := current.node
+			length := n.Len()
+
+			for i := length - 1; i >= 0; i-- {
+				value := n.Index(i)
+				if !value.Exists() {
+					continue
+				}
+
+				// 使用字节缓冲区构建路径
+				pathPos := 0
+				pathLen := len(current.path)
+				if pathLen > 0 {
+					copy(pathBytes[pathPos:], current.path)
+					pathPos += pathLen
+				}
+				pathBytes[pathPos] = '['
+				pathPos++
+
+				// 内联整数转字符串
+				if i == 0 {
+					pathBytes[pathPos] = '0'
+					pathPos++
+				} else {
+					start := pathPos
+					for num := i; num > 0; num /= 10 {
+						pathBytes[pathPos] = byte('0' + num%10)
+						pathPos++
+					}
+					// 反转数字
+					for left, right := start, pathPos-1; left < right; left, right = left+1, right-1 {
+						pathBytes[left], pathBytes[right] = pathBytes[right], pathBytes[left]
+					}
+				}
+
+				pathBytes[pathPos] = ']'
+				pathPos++
+
+				newPath := string(pathBytes[:pathPos])
+				stack = append(stack, walkItem{
+					node: value,
+					path: newPath,
+				})
+			}
+		}
+	}
+}
+
+// formatInt 优化的整数转字符串函数，避免fmt.Sprintf的开销
+func formatInt(n int) string {
+	if n == 0 {
+		return "0"
+	}
+
+	var buf [10]byte // 足够存储32位整数
+	i := len(buf)
+
+	for n > 0 {
+		i--
+		buf[i] = byte('0' + n%10)
+		n /= 10
+	}
+
+	return string(buf[i:])
+}
+
+// ===== 便捷查找方法 =====
+
+// FindByPath 根据路径查找节点（支持深层嵌套）
+// path 支持格式如: "data.notes[0].comments_count"
+func (n Node) FindByPath(path string) Node {
+	return n.GetPath(path)
+}
+
+// HasKey 检查对象是否包含指定键
+func (n Node) HasKey(key string) bool {
+	if n.typ != 'o' {
+		return false
+	}
+	return n.Get(key).Exists()
+}
+
+// GetKeyValue 获取对象中指定键的值，如果不存在返回指定的默认值
+func (n Node) GetKeyValue(key string, defaultValue Node) Node {
+	if n.typ != 'o' {
+		return defaultValue
+	}
+	value := n.Get(key)
+	if !value.Exists() {
+		return defaultValue
+	}
+	return value
+}
+
+// ===== 统计和分析方法 =====
+
+// CountIf 统计数组中满足条件的元素个数
+func (n Node) CountIf(predicate func(index int, value Node) bool) int {
+	if n.typ != 'a' || predicate == nil {
+		return 0
+	}
+
+	count := 0
+	n.ArrayForEach(func(index int, value Node) bool {
+		if predicate(index, value) {
+			count++
+		}
+		return true
+	})
+	return count
+}
+
+// AllMatch 检查数组中是否所有元素都满足条件
+func (n Node) AllMatch(predicate func(index int, value Node) bool) bool {
+	if n.typ != 'a' || predicate == nil {
+		return false
+	}
+
+	allMatch := true
+	n.ArrayForEach(func(index int, value Node) bool {
+		if !predicate(index, value) {
+			allMatch = false
+			return false // 提前终止
+		}
+		return true
+	})
+	return allMatch
+}
+
+// AnyMatch 检查数组中是否有任何元素满足条件
+func (n Node) AnyMatch(predicate func(index int, value Node) bool) bool {
+	if n.typ != 'a' || predicate == nil {
+		return false
+	}
+
+	_, _, found := n.FindInArray(predicate)
+	return found
 }
