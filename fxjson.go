@@ -30,6 +30,24 @@ type JsonParam struct {
 	Precision  int  // 浮点数精度；-1 表示原样输出，>=0 表示保留的小数位数（四舍五入）
 }
 
+// ParseOptions 用于控制 JSON 解析行为和安全限制
+type ParseOptions struct {
+	MaxDepth      int  // 最大嵌套深度，0 表示无限制
+	MaxStringLen  int  // 最大字符串长度，0 表示无限制
+	MaxObjectKeys int  // 最大对象键数量，0 表示无限制
+	MaxArrayItems int  // 最大数组项数量，0 表示无限制
+	StrictMode    bool // 严格模式：拒绝格式错误的 JSON
+}
+
+// DefaultParseOptions 默认解析选项
+var DefaultParseOptions = ParseOptions{
+	MaxDepth:      1000,        // 默认最大1000层嵌套
+	MaxStringLen:  1024 * 1024, // 默认最大1MB字符串
+	MaxObjectKeys: 10000,       // 默认最大10000个键
+	MaxArrayItems: 100000,      // 默认最大100000个数组项
+	StrictMode:    false,       // 默认非严格模式
+}
+
 type NodeType byte
 
 const (
@@ -538,8 +556,18 @@ func parseRootNode(data []byte) Node {
 
 // FromBytes 创建节点并智能展开嵌套的转义JSON
 func FromBytes(b []byte) Node {
+	return FromBytesWithOptions(b, DefaultParseOptions)
+}
+
+// FromBytesWithOptions 使用指定选项解析 JSON
+func FromBytesWithOptions(b []byte, opts ParseOptions) Node {
 	if len(b) == 0 {
 		return Node{}
+	}
+
+	// 安全检查
+	if err := validateJSON(b, opts); err != nil {
+		return Node{typ: byte(TypeInvalid)}
 	}
 
 	// 首先创建原始节点
@@ -559,6 +587,101 @@ func FromBytes(b []byte) Node {
 	}
 
 	return originalNode
+}
+
+// validateJSON 验证 JSON 数据的安全性
+func validateJSON(data []byte, opts ParseOptions) error {
+	if len(data) == 0 {
+		return nil
+	}
+
+	depth := 0
+	maxDepth := 0
+	stringLen := 0
+	objectKeys := 0
+	arrayItems := 0
+	inString := false
+	escaped := false
+
+	for i := 0; i < len(data); i++ {
+		c := data[i]
+
+		if inString {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if c == '\\' {
+				escaped = true
+				continue
+			}
+			if c == '"' {
+				inString = false
+				// 检查字符串长度
+				if opts.MaxStringLen > 0 && stringLen > opts.MaxStringLen {
+					return fmt.Errorf("string too long: %d > %d", stringLen, opts.MaxStringLen)
+				}
+				stringLen = 0
+			} else {
+				stringLen++
+			}
+			continue
+		}
+
+		switch c {
+		case '"':
+			inString = true
+			stringLen = 0
+		case '{':
+			depth++
+			if depth > maxDepth {
+				maxDepth = depth
+			}
+			if opts.MaxDepth > 0 && depth > opts.MaxDepth {
+				return fmt.Errorf("nesting too deep: %d > %d", depth, opts.MaxDepth)
+			}
+			objectKeys = 0
+		case '}':
+			if depth <= 0 && opts.StrictMode {
+				return fmt.Errorf("unexpected '}'")
+			}
+			depth--
+		case '[':
+			depth++
+			if depth > maxDepth {
+				maxDepth = depth
+			}
+			if opts.MaxDepth > 0 && depth > opts.MaxDepth {
+				return fmt.Errorf("nesting too deep: %d > %d", depth, opts.MaxDepth)
+			}
+			arrayItems = 0
+		case ']':
+			if depth <= 0 && opts.StrictMode {
+				return fmt.Errorf("unexpected ']'")
+			}
+			depth--
+		case ':':
+			if depth > 0 {
+				objectKeys++
+				if opts.MaxObjectKeys > 0 && objectKeys > opts.MaxObjectKeys {
+					return fmt.Errorf("too many object keys: %d > %d", objectKeys, opts.MaxObjectKeys)
+				}
+			}
+		case ',':
+			if depth > 0 {
+				arrayItems++
+				if opts.MaxArrayItems > 0 && arrayItems > opts.MaxArrayItems {
+					return fmt.Errorf("too many array items: %d > %d", arrayItems, opts.MaxArrayItems)
+				}
+			}
+		}
+	}
+
+	if opts.StrictMode && depth != 0 {
+		return fmt.Errorf("unmatched brackets, depth: %d", depth)
+	}
+
+	return nil
 }
 
 func (n Node) Get(path string) Node {
@@ -1607,7 +1730,12 @@ func (n Node) decodeStringFast(rv reflect.Value) error {
 
 	// 零拷贝字符串提取
 	strBytes := data[n.start+1 : n.end-1]
-	str := unsafe.String(&strBytes[0], len(strBytes))
+	var str string
+	if len(strBytes) == 0 {
+		str = "" // 安全处理空字符串
+	} else {
+		str = unsafe.String(&strBytes[0], len(strBytes))
+	}
 
 	// 仅在需要时进行转义处理
 	if strings.Contains(str, "\\") {
