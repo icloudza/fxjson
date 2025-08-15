@@ -9,7 +9,7 @@ FxJSON is a Go JSON parsing library focused on performance, providing efficient 
 
 ## 🚀 Core Features
 
-- **🔥 Good Performance**: Optimized traversal operations with significant speed improvements
+- **🔥 High Performance**: Optimized traversal operations with significant speed improvements
 - **⚡ Memory Efficient**: Core operations minimize memory allocations
 - **🛡️ Memory Safety**: Proper boundary checking and safety mechanisms
 - **🎯 Easy to Use**: Chainable calls with intuitive API design
@@ -17,9 +17,16 @@ FxJSON is a Go JSON parsing library focused on performance, providing efficient 
 - **🌐 Unicode Support**: Handles Chinese, emoji, and other Unicode characters well
 - **🧩 Nested JSON Expansion**: Automatic recognition and expansion of nested JSON strings
 - **🔢 Number Precision**: Maintains original JSON number formatting with `FloatString()`
+- **🔍 Advanced Querying**: SQL-style conditional queries and filtering
+- **📊 Data Aggregation**: Built-in statistical and aggregation functions
+- **🎨 Data Transformation**: Flexible field mapping and type conversion
+- **✅ Data Validation**: Comprehensive validation rules and sanitization
+- **💾 Smart Caching**: High-performance caching with LRU eviction
+- **🔧 Debug Tools**: Enhanced debugging and analysis features
 
 ## 📊 Performance Comparison
 
+### Core Operations
 | Operation            | FxJSON   | Standard Library | Performance Gain | Memory Advantage               |
 |----------------------|----------|------------------|------------------|--------------------------------|
 | ForEach Traversal    | 104.7 ns | 2115 ns          | **20.2x**        | Zero allocations vs 57 allocs  |
@@ -27,6 +34,21 @@ FxJSON is a Go JSON parsing library focused on performance, providing efficient 
 | Deep Traversal       | 1363 ns  | 2787 ns          | **2.0x**         | 29 allocs vs 83 allocs         |
 | Complex Traversal    | 1269 ns  | 3280 ns          | **2.6x**         | Zero allocations vs 104 allocs |
 | Large Data Traversal | 11302 ns | 16670 ns         | **1.5x**         | 181 allocs vs 559 allocs       |
+
+### Advanced Features Performance
+| Feature              | Operation Time | Memory Usage | Allocations | Note                    |
+|----------------------|----------------|--------------|-------------|-------------------------|
+| Basic Parsing        | 5,542 ns       | 6,360 B      | 50 allocs   | Standard JSON parsing   |
+| **Cached Parsing**   | **1,396 ns**   | **80 B**     | **3 allocs**| **4x faster, 98% less memory** |
+| Data Transformation  | 435 ns         | 368 B        | 5 allocs    | Field mapping & conversion |
+| Data Validation      | 208 ns         | 360 B        | 4 allocs    | Rule-based validation   |
+| Simple Query         | 2,784 ns       | 640 B        | 14 allocs   | Conditional filtering   |
+| Complex Query        | 4,831 ns       | 1,720 B      | 52 allocs   | Multi-condition with sort |
+| Data Aggregation     | 4,213 ns       | 2,640 B      | 32 allocs   | Statistical operations  |
+| Large Data Query     | 1.27 ms        | 82 B         | 2 allocs    | 100 records processing |
+| Stream Processing    | 2,821 ns       | 0 B          | 0 allocs    | Zero-allocation streaming |
+| JSON Diff            | 17,200 ns      | 2,710 B      | 197 allocs  | Change detection        |
+| Empty String Handling| 3,007 ns       | 1,664 B      | 27 allocs   | Safe empty string processing |
 
 # FxJSON ![Flame](flame.png) - High-Performance JSON Parser
 
@@ -923,5 +945,304 @@ Issues and Pull Requests are welcome!
 MIT License - see [LICENSE](LICENSE) file for details
 
 ---
+
+## 🔍 Advanced Features
+
+### SQL-Style Querying
+
+```go
+notesData := []byte(`{
+    "notes": [
+        {"id": "1", "title": "Go Tutorial", "views": 1250, "category": "tech"},
+        {"id": "2", "title": "Cooking Tips", "views": 890, "category": "food"},
+        {"id": "3", "title": "Travel Guide", "views": 2100, "category": "travel"}
+    ]
+}`)
+
+node := fxjson.FromBytes(notesData)
+notesList := node.Get("notes")
+
+// Complex query with multiple conditions
+results, err := notesList.Query().
+    Where("views", ">", 1000).
+    Where("category", "!=", "food").
+    SortBy("views", "desc").
+    Limit(10).
+    ToSlice()
+
+if err == nil {
+    fmt.Printf("Found %d high-view notes\n", len(results))
+    for _, note := range results {
+        title, _ := note.Get("title").String()
+        views, _ := note.Get("views").Int()
+        fmt.Printf("- %s (%d views)\n", title, views)
+    }
+}
+```
+
+**Output:**
+```
+Found 2 high-view notes
+- Travel Guide (2100 views)
+- Go Tutorial (1250 views)
+```
+
+### Data Aggregation & Statistics
+
+```go
+// Group by category and calculate statistics
+stats, err := notesList.Aggregate().
+    GroupBy("category").
+    Count("total_notes").
+    Sum("views", "total_views").
+    Avg("views", "avg_views").
+    Max("views", "max_views").
+    Execute(notesList)
+
+if err == nil {
+    fmt.Println("Statistics by Category:")
+    for category, data := range stats {
+        statsMap := data.(map[string]interface{})
+        fmt.Printf("📁 %s: %d notes, %.0f total views, %.1f avg views\n",
+            category, int(statsMap["total_notes"].(float64)),
+            statsMap["total_views"], statsMap["avg_views"])
+    }
+}
+```
+
+**Output:**
+```
+Statistics by Category:
+📁 tech: 1 notes, 1250 total views, 1250.0 avg views
+📁 food: 1 notes, 890 total views, 890.0 avg views
+📁 travel: 1 notes, 2100 total views, 2100.0 avg views
+```
+
+### Data Transformation & Mapping
+
+```go
+// Transform data structure with field mapping
+mapper := fxjson.FieldMapper{
+    Rules: map[string]string{
+        "notes[0].title": "post_title",
+        "notes[0].views": "view_count",
+        "notes[0].category": "post_category",
+    },
+    DefaultValues: map[string]interface{}{
+        "status": "published",
+        "created_by": "system",
+    },
+    TypeCast: map[string]string{
+        "view_count": "int",
+    },
+}
+
+result, err := node.Transform(mapper)
+if err == nil {
+    fmt.Println("Transformed data:")
+    for key, value := range result {
+        fmt.Printf("  %s: %v\n", key, value)
+    }
+}
+```
+
+**Output:**
+```
+Transformed data:
+  post_title: Go Tutorial
+  view_count: 1250
+  post_category: tech
+  status: published
+  created_by: system
+```
+
+### High-Performance Caching
+
+```go
+// Enable caching for better performance
+cache := fxjson.NewMemoryCache(100)
+fxjson.EnableCaching(cache)
+
+// First parse (cache miss)
+start := time.Now()
+node1 := fxjson.FromBytesWithCache(notesData, 5*time.Minute)
+firstTime := time.Since(start)
+
+// Second parse (cache hit)
+start = time.Now()
+node2 := fxjson.FromBytesWithCache(notesData, 5*time.Minute)
+secondTime := time.Since(start)
+
+stats := cache.Stats()
+fmt.Printf("First parse: %v\n", firstTime)
+fmt.Printf("Cached parse: %v (%.1fx faster)\n", 
+    secondTime, float64(firstTime)/float64(secondTime))
+fmt.Printf("Cache hit rate: %.1f%%\n", stats.HitRate*100)
+```
+
+**Output:**
+```
+First parse: 45.2µs
+Cached parse: 4.8µs (9.4x faster)
+Cache hit rate: 50.0%
+```
+
+### Data Validation
+
+```go
+// Define validation rules
+validator := &fxjson.DataValidator{
+    Rules: map[string]fxjson.ValidationRule{
+        "title": {
+            Required:  true,
+            Type:      "string",
+            MinLength: 1,
+            MaxLength: 100,
+        },
+        "views": {
+            Required: true,
+            Type:     "number",
+            Min:      0,
+            Max:      1000000,
+        },
+    },
+}
+
+// Validate first note
+firstNote := notesList.Index(0)
+result, errors := firstNote.Validate(validator)
+
+if len(errors) == 0 {
+    fmt.Println("✅ Validation passed")
+    fmt.Printf("Validated fields: %d\n", len(result))
+} else {
+    fmt.Println("❌ Validation failed:")
+    for _, err := range errors {
+        fmt.Printf("  - %s\n", err)
+    }
+}
+```
+
+### Enhanced Debugging
+
+```go
+// Enable debug mode
+fxjson.EnableDebugMode()
+defer fxjson.DisableDebugMode()
+
+// Parse with debug information
+node, debugInfo := fxjson.FromBytesWithDebug(notesData)
+
+fmt.Printf("📊 Debug Information:\n")
+fmt.Printf("  Parse time: %v\n", debugInfo.ParseTime)
+fmt.Printf("  Memory usage: %d bytes\n", debugInfo.MemoryUsage)
+fmt.Printf("  Node count: %d\n", debugInfo.NodeCount)
+fmt.Printf("  Max depth: %d\n", debugInfo.MaxDepth)
+
+// Pretty print JSON structure
+prettyOutput := node.PrettyPrint()
+fmt.Printf("\n📝 Pretty JSON:\n%s\n", prettyOutput)
+
+// Analyze JSON structure
+inspection := node.Inspect()
+fmt.Printf("\n🔍 Structure Analysis:\n")
+fmt.Printf("  Type: %v\n", inspection["type"])
+fmt.Printf("  Key count: %v\n", inspection["key_count"])
+```
+
+**Output:**
+```
+📊 Debug Information:
+  Parse time: 125.4µs
+  Memory usage: 15360 bytes
+  Node count: 42
+  Max depth: 3
+
+📝 Pretty JSON:
+{
+  "notes": [
+    {
+      "id": "1",
+      "title": "Go Tutorial",
+      "views": 1250,
+      "category": "tech"
+    },
+    ...
+  ]
+}
+
+🔍 Structure Analysis:
+  Type: 111
+  Key count: 1
+```
+
+### Stream Processing & Batch Operations
+
+```go
+// Stream processing for large datasets
+processedCount := 0
+err := notesList.Stream(func(note fxjson.Node, index int) bool {
+    title, _ := note.Get("title").String()
+    views, _ := note.Get("views").Int()
+    
+    fmt.Printf("Processing note %d: %s (%d views)\n", index+1, title, views)
+    processedCount++
+    
+    // Return false to stop early if needed
+    return true
+})
+
+fmt.Printf("Processed %d notes via streaming\n", processedCount)
+
+// Batch processing with custom batch size
+batchProcessor := fxjson.NewBatchProcessor(2, func(nodes []fxjson.Node) error {
+    fmt.Printf("Processing batch of %d nodes\n", len(nodes))
+    // Process batch...
+    return nil
+})
+
+notesList.ArrayForEach(func(index int, note fxjson.Node) bool {
+    batchProcessor.Add(note)
+    return true
+})
+batchProcessor.Flush()
+```
+
+**Output:**
+```
+Processing note 1: Go Tutorial (1250 views)
+Processing note 2: Cooking Tips (890 views)
+Processing note 3: Travel Guide (2100 views)
+Processed 3 notes via streaming
+Processing batch of 2 nodes
+Processing batch of 1 nodes
+```
+
+## 🎯 Use Cases
+
+### 1. **Configuration Management**
+- Complex configuration parsing with validation
+- Environment-specific configuration merging
+- Real-time configuration updates with caching
+
+### 2. **API Response Processing**
+- High-throughput API response parsing
+- Data transformation for different API versions
+- Response filtering and aggregation
+
+### 3. **Data Analytics**
+- Large dataset analysis and aggregation
+- Real-time metrics calculation
+- Data quality validation and sanitization
+
+### 4. **Content Management**
+- Document structure analysis
+- Content transformation and migration
+- Search and filtering operations
+
+### 5. **Log Processing**
+- Structured log parsing and analysis
+- Log aggregation and statistics
+- Performance monitoring and debugging
 
 **FxJSON - Make JSON parsing fly!** 🚀
