@@ -384,3 +384,160 @@ func walkStdCount(v any, path string, count *int) {
 		}
 	}
 }
+
+// ===== Decode 解码测试 =====
+type TestStruct struct {
+	ID     int64    `json:"id"`
+	Name   string   `json:"name"`
+	Active bool     `json:"active"`
+	Score  float64  `json:"score"`
+	Tags   []string `json:"tags"`
+	Meta   struct {
+		Age    int `json:"age"`
+		Nested struct {
+			Flag    bool  `json:"flag"`
+			Numbers []int `json:"numbers"`
+		} `json:"nested"`
+	} `json:"meta"`
+}
+
+func BenchmarkDecode_fxjson(b *testing.B) {
+	node := FromBytes(sampleJSON)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var result TestStruct
+		_ = node.Decode(&result)
+	}
+}
+
+func BenchmarkDecode_std(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var result TestStruct
+		_ = json.Unmarshal(sampleJSON, &result)
+	}
+}
+
+// ===== DecodeStruct 优化解码测试 =====
+func BenchmarkDecodeStruct_fxjson(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var result TestStruct
+		_ = DecodeStruct(sampleJSON, &result)
+	}
+}
+
+func BenchmarkDecodeStructFast_fxjson(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var result TestStruct
+		_ = DecodeStructFast(sampleJSON, &result)
+	}
+}
+
+// ===== 复杂结构体解码测试 =====
+type ComplexStruct struct {
+	Data struct {
+		Users []struct {
+			ID   int      `json:"id"`
+			Name string   `json:"name"`
+			Tags []string `json:"tags"`
+		} `json:"users"`
+		Meta struct {
+			Total int `json:"total"`
+			Page  int `json:"page"`
+			Limit int `json:"limit"`
+		} `json:"meta"`
+	} `json:"data"`
+}
+
+func BenchmarkComplexDecode_fxjson(b *testing.B) {
+	node := FromBytes(complexJSON)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var result ComplexStruct
+		_ = node.Decode(&result)
+	}
+}
+
+func BenchmarkComplexDecode_std(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var result ComplexStruct
+		_ = json.Unmarshal(complexJSON, &result)
+	}
+}
+
+func BenchmarkComplexDecodeStruct_fxjson(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var result ComplexStruct
+		_ = DecodeStruct(complexJSON, &result)
+	}
+}
+
+func BenchmarkComplexDecodeStructFast_fxjson(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var result ComplexStruct
+		_ = DecodeStructFast(complexJSON, &result)
+	}
+}
+
+// ===== 大数据结构体解码测试 =====
+type LargeStruct struct {
+	Users []struct {
+		ID     int      `json:"id"`
+		Name   string   `json:"name"`
+		Email  string   `json:"email"`
+		Age    int      `json:"age"`
+		Active bool     `json:"active"`
+		Tags   []string `json:"tags"`
+		Meta   struct {
+			Department string   `json:"department"`
+			Level      string   `json:"level"`
+			Projects   []string `json:"projects"`
+		} `json:"meta"`
+	} `json:"users"`
+	Products []struct {
+		ID       int     `json:"id"`
+		Name     string  `json:"name"`
+		Price    float64 `json:"price"`
+		Category string  `json:"category"`
+		InStock  bool    `json:"in_stock"`
+		Reviews  []struct {
+			Rating  int    `json:"rating"`
+			Comment string `json:"comment"`
+		} `json:"reviews"`
+	} `json:"products"`
+}
+
+func BenchmarkLargeDecode_fxjson(b *testing.B) {
+	node := FromBytes(largeJSON)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var result LargeStruct
+		_ = node.Decode(&result)
+	}
+}
+
+func BenchmarkLargeDecode_std(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var result LargeStruct
+		_ = json.Unmarshal(largeJSON, &result)
+	}
+}
+
+func BenchmarkLargeDecodeStruct_fxjson(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var result LargeStruct
+		_ = DecodeStruct(largeJSON, &result)
+	}
+}
+
+func BenchmarkLargeDecodeStructFast_fxjson(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var result LargeStruct
+		_ = DecodeStructFast(largeJSON, &result)
+	}
+}

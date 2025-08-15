@@ -611,7 +611,11 @@ if status == "success" {
 分页: 第1页，每页10条，共2条
 ```
 
-## ⚙️ 解码到结构体
+## ⚙️ 高性能结构体解码
+
+FxJSON 提供多种优化的解码方法，满足不同的性能需求：
+
+### 标准解码 (基于Node)
 
 ```go
 type User struct {
@@ -649,6 +653,95 @@ if err := node.Decode(&user); err != nil {
   年龄: 28
   邮箱: dev@example.com
   标签: [golang json performance]
+```
+
+### 直接解码 (优化版本)
+
+为了获得更好的性能，你可以直接从字节解码而无需创建Node：
+
+```go
+// DecodeStruct - 直接从字节解码 (更快)
+var user1 User
+if err := fxjson.DecodeStruct(jsonData, &user1); err != nil {
+    fmt.Printf("DecodeStruct错误: %v\n", err)
+} else {
+    fmt.Printf("DecodeStruct结果: %+v\n", user1)
+}
+
+// DecodeStructFast - 极速解码 (最快)
+var user2 User
+if err := fxjson.DecodeStructFast(jsonData, &user2); err != nil {
+    fmt.Printf("DecodeStructFast错误: %v\n", err)
+} else {
+    fmt.Printf("DecodeStructFast结果: %+v\n", user2)
+}
+```
+
+**输出:**
+```
+DecodeStruct结果: {Name:开发者 Age:28 Tags:[golang json performance] Email:dev@example.com}
+DecodeStructFast结果: {Name:开发者 Age:28 Tags:[golang json performance] Email:dev@example.com}
+```
+
+### 性能对比
+
+| 方法 | 速度 | 使用场景 |
+|------|------|----------|
+| `node.Decode()` | 快 | 需要Node功能时 |
+| `DecodeStruct()` | 更快 | 直接结构体解码 |
+| `DecodeStructFast()` | 最快 | 性能关键场景 |
+
+### 复杂结构体解码
+
+```go
+type ComplexUser struct {
+    ID       int    `json:"id"`
+    Name     string `json:"name"`
+    Profile  struct {
+        Avatar string   `json:"avatar"`
+        Bio    string   `json:"bio"`
+        Skills []string `json:"skills"`
+    } `json:"profile"`
+    Metadata map[string]interface{} `json:"metadata"`
+}
+
+complexJSON := []byte(`{
+    "id": 12345,
+    "name": "高级开发者",
+    "profile": {
+        "avatar": "https://example.com/avatar.jpg",
+        "bio": "拥有10+年经验的全栈开发者",
+        "skills": ["Go", "Python", "JavaScript", "Docker", "Kubernetes"]
+    },
+    "metadata": {
+        "last_login": "2024-01-15T10:30:00Z",
+        "preferences": {
+            "theme": "dark",
+            "language": "zh-CN"
+        }
+    }
+}`)
+
+var complexUser ComplexUser
+if err := fxjson.DecodeStructFast(complexJSON, &complexUser); err != nil {
+    fmt.Printf("错误: %v\n", err)
+    return
+}
+
+fmt.Printf("用户ID: %d\n", complexUser.ID)
+fmt.Printf("姓名: %s\n", complexUser.Name)
+fmt.Printf("简介: %s\n", complexUser.Profile.Bio)
+fmt.Printf("技能: %v\n", complexUser.Profile.Skills)
+fmt.Printf("元数据: %+v\n", complexUser.Metadata)
+```
+
+**输出:**
+```
+用户ID: 12345
+姓名: 高级开发者
+简介: 拥有10+年经验的全栈开发者
+技能: [Go Python JavaScript Docker Kubernetes]
+元数据: map[last_login:2024-01-15T10:30:00Z preferences:map[language:zh-CN theme:dark]]
 ```
 
 ## 🚨 错误处理
@@ -791,6 +884,11 @@ employees: [数组，长度=3]
 3. **内存管理**: 核心遍历操作实现零分配，适合高频调用场景
 4. **类型检查**: 使用`IsXXX()`方法进行类型检查，避免不必要的类型转换
 5. **缓存利用**: 数组索引会自动缓存，重复访问同一数组时性能更佳
+6. **解码优化**: 
+   - 需要Node功能时使用 `node.Decode()`
+   - 直接结构体解码使用 `DecodeStruct()` (更快)
+   - 性能关键场景使用 `DecodeStructFast()` (最快)
+   - 根据性能需求选择合适的方法
 
 ## ⚠️ 注意事项
 
@@ -864,7 +962,9 @@ employees: [数组，长度=3]
 - `AnyMatch(predicate func(index int, value Node) bool) bool` - 检查是否有数组元素匹配
 
 #### 解码
-- `Decode(v any) error` - 解码JSON到Go结构体/类型
+- `Decode(v any) error` - 解码JSON到Go结构体/类型 (优化版本)
+- `DecodeStruct(data []byte, v any) error` - 直接从字节解码到结构体
+- `DecodeStructFast(data []byte, v any) error` - 极速结构体解码
 
 ### 回调函数类型
 

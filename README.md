@@ -532,7 +532,11 @@ Redis: 127.0.0.1:6379
 Enabled features (3 items): auth logging metrics 
 ```
 
-## ⚙️ Decode to Struct
+## ⚙️ High-Performance Decode to Struct
+
+FxJSON provides multiple optimized decoding methods for different performance requirements:
+
+### Standard Decode (Node-based)
 
 ```go
 type User struct {
@@ -570,6 +574,95 @@ Decode result:
   Age: 28
   Email: dev@example.com
   Tags: [golang json performance]
+```
+
+### Direct Decode (Optimized)
+
+For better performance, you can decode directly from bytes without creating a Node:
+
+```go
+// DecodeStruct - Direct decoding from bytes (faster)
+var user1 User
+if err := fxjson.DecodeStruct(jsonData, &user1); err != nil {
+    fmt.Printf("DecodeStruct error: %v\n", err)
+} else {
+    fmt.Printf("DecodeStruct result: %+v\n", user1)
+}
+
+// DecodeStructFast - Ultra-fast decoding (fastest)
+var user2 User
+if err := fxjson.DecodeStructFast(jsonData, &user2); err != nil {
+    fmt.Printf("DecodeStructFast error: %v\n", err)
+} else {
+    fmt.Printf("DecodeStructFast result: %+v\n", user2)
+}
+```
+
+**Output:**
+```
+DecodeStruct result: {Name:Developer Age:28 Tags:[golang json performance] Email:dev@example.com}
+DecodeStructFast result: {Name:Developer Age:28 Tags:[golang json performance] Email:dev@example.com}
+```
+
+### Performance Comparison
+
+| Method | Speed | Use Case |
+|--------|-------|----------|
+| `node.Decode()` | Fast | When you need Node functionality |
+| `DecodeStruct()` | Faster | Direct struct decoding |
+| `DecodeStructFast()` | Fastest | Performance-critical scenarios |
+
+### Complex Struct Decoding
+
+```go
+type ComplexUser struct {
+    ID       int    `json:"id"`
+    Name     string `json:"name"`
+    Profile  struct {
+        Avatar string   `json:"avatar"`
+        Bio    string   `json:"bio"`
+        Skills []string `json:"skills"`
+    } `json:"profile"`
+    Metadata map[string]interface{} `json:"metadata"`
+}
+
+complexJSON := []byte(`{
+    "id": 12345,
+    "name": "Advanced Developer",
+    "profile": {
+        "avatar": "https://example.com/avatar.jpg",
+        "bio": "Full-stack developer with 10+ years experience",
+        "skills": ["Go", "Python", "JavaScript", "Docker", "Kubernetes"]
+    },
+    "metadata": {
+        "last_login": "2024-01-15T10:30:00Z",
+        "preferences": {
+            "theme": "dark",
+            "language": "en-US"
+        }
+    }
+}`)
+
+var complexUser ComplexUser
+if err := fxjson.DecodeStructFast(complexJSON, &complexUser); err != nil {
+    fmt.Printf("Error: %v\n", err)
+    return
+}
+
+fmt.Printf("User ID: %d\n", complexUser.ID)
+fmt.Printf("Name: %s\n", complexUser.Name)
+fmt.Printf("Bio: %s\n", complexUser.Profile.Bio)
+fmt.Printf("Skills: %v\n", complexUser.Profile.Skills)
+fmt.Printf("Metadata: %+v\n", complexUser.Metadata)
+```
+
+**Output:**
+```
+User ID: 12345
+Name: Advanced Developer
+Bio: Full-stack developer with 10+ years experience
+Skills: [Go Python JavaScript Docker Kubernetes]
+Metadata: map[last_login:2024-01-15T10:30:00Z preferences:map[language:en-US theme:dark]]
 ```
 
 ## 🚨 Error Handling
@@ -712,6 +805,11 @@ Node 3: Bob's info
 3. **Memory Management**: Core traversal operations achieve zero allocations, suitable for high-frequency scenarios
 4. **Type Checking**: Use `IsXXX()` methods for type checking to avoid unnecessary type conversions
 5. **Cache Utilization**: Array indices are automatically cached for better performance on repeated access
+6. **Decode Optimization**: 
+   - Use `node.Decode()` when you need Node functionality
+   - Use `DecodeStruct()` for direct struct decoding (faster)
+   - Use `DecodeStructFast()` for performance-critical scenarios (fastest)
+   - Choose the right method based on your performance requirements
 
 ## ⚠️ Notes
 
@@ -785,7 +883,9 @@ Node 3: Bob's info
 - `AnyMatch(predicate func(index int, value Node) bool) bool` - Check if any array element matches
 
 #### Decoding
-- `Decode(v any) error` - Decode JSON into Go struct/type
+- `Decode(v any) error` - Decode JSON into Go struct/type (optimized)
+- `DecodeStruct(data []byte, v any) error` - Direct struct decoding from bytes
+- `DecodeStructFast(data []byte, v any) error` - Ultra-fast struct decoding
 
 ### Callback Function Types
 

@@ -1568,12 +1568,860 @@ func (n Node) Decode(v any) error {
 	if rv.IsNil() {
 		return fmt.Errorf("v must be a non-nil pointer: type=%T", v)
 	}
-	data := n.getWorkingData()
-	val, _, err := fastDecode(data, n.start, n.end)
-	if err != nil {
-		return err
+
+	return n.decodeValueFast(rv.Elem())
+}
+
+// decodeValueFast 高性能解码实现
+func (n Node) decodeValueFast(rv reflect.Value) error {
+	if !rv.CanSet() {
+		return fmt.Errorf("cannot set value of type %s", rv.Type())
 	}
-	rv.Elem().Set(reflect.ValueOf(val))
+
+	// 快速路径：直接处理常见类型，避免反射开销
+	switch n.typ {
+	case 'l': // null
+		rv.Set(reflect.Zero(rv.Type()))
+		return nil
+	case 's': // string
+		return n.decodeStringFast(rv)
+	case 'n': // number
+		return n.decodeNumberFast(rv)
+	case 'b': // bool
+		return n.decodeBoolFast(rv)
+	case 'a': // array
+		return n.decodeArrayFast(rv)
+	case 'o': // object
+		return n.decodeObjectFast(rv)
+	default:
+		return fmt.Errorf("unknown JSON type: %d", n.Kind())
+	}
+}
+
+// decodeStringFast 快速字符串解码
+func (n Node) decodeStringFast(rv reflect.Value) error {
+	data := n.getWorkingData()
+	if n.start+1 >= n.end {
+		return fmt.Errorf("invalid string bounds")
+	}
+
+	// 零拷贝字符串提取
+	strBytes := data[n.start+1 : n.end-1]
+	str := unsafe.String(&strBytes[0], len(strBytes))
+
+	// 仅在需要时进行转义处理
+	if strings.Contains(str, "\\") {
+		str = unescapeJSON(str)
+	}
+
+	switch rv.Kind() {
+	case reflect.String:
+		rv.SetString(str)
+		return nil
+	case reflect.Interface:
+		rv.Set(reflect.ValueOf(str))
+		return nil
+	default:
+		return fmt.Errorf("cannot decode string to %s", rv.Type())
+	}
+}
+
+// decodeNumberFast 快速数字解码
+func (n Node) decodeNumberFast(rv reflect.Value) error {
+	data := n.getWorkingData()
+	numBytes := data[n.start:n.end]
+
+	switch rv.Kind() {
+	case reflect.String:
+		rv.SetString(unsafe.String(&numBytes[0], len(numBytes)))
+		return nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		i, err := parseIntFast(numBytes)
+		if err != nil {
+			return err
+		}
+		rv.SetInt(i)
+		return nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		i, err := parseIntFast(numBytes)
+		if err != nil {
+			return err
+		}
+		if i < 0 {
+			return fmt.Errorf("cannot assign negative number %d to unsigned type %s", i, rv.Type())
+		}
+		rv.SetUint(uint64(i))
+		return nil
+	case reflect.Float32, reflect.Float64:
+		f := parseFloatFast(numBytes)
+		rv.SetFloat(f)
+		return nil
+	case reflect.Interface:
+		// 智能类型推断：整数 vs 浮点数
+		if !strings.Contains(string(numBytes), ".") && !strings.ContainsAny(string(numBytes), "eE") {
+			if i, err := parseIntFast(numBytes); err == nil {
+				rv.Set(reflect.ValueOf(i))
+				return nil
+			}
+		}
+		f := parseFloatFast(numBytes)
+		rv.Set(reflect.ValueOf(f))
+		return nil
+	default:
+		return fmt.Errorf("cannot decode number to %s", rv.Type())
+	}
+}
+
+// decodeBoolFast 快速布尔解码
+func (n Node) decodeBoolFast(rv reflect.Value) error {
+	data := n.getWorkingData()
+	boolBytes := data[n.start:n.end]
+
+	var b bool
+	if len(boolBytes) == 4 && string(boolBytes) == "true" {
+		b = true
+	} else if len(boolBytes) == 5 && string(boolBytes) == "false" {
+		b = false
+	} else {
+		return fmt.Errorf("invalid bool value: %s", string(boolBytes))
+	}
+
+	switch rv.Kind() {
+	case reflect.String:
+		rv.SetString(string(boolBytes))
+		return nil
+	case reflect.Bool:
+		rv.SetBool(b)
+		return nil
+	case reflect.Interface:
+		rv.Set(reflect.ValueOf(b))
+		return nil
+	default:
+		return fmt.Errorf("cannot decode bool to %s", rv.Type())
+	}
+}
+
+// decodeArrayFast 快速数组解码
+func (n Node) decodeArrayFast(rv reflect.Value) error {
+	switch rv.Kind() {
+	case reflect.Slice:
+		return n.decodeSliceFast(rv)
+	case reflect.Array:
+		return n.decodeArrayFixedFast(rv)
+	case reflect.Interface:
+		// 使用预分配容量避免扩容
+		length := n.Len()
+		slice := make([]interface{}, 0, length)
+
+		var decodeErr error
+		n.ArrayForEach(func(i int, child Node) bool {
+			var elem interface{}
+			elemRV := reflect.ValueOf(&elem).Elem()
+			if err := child.decodeValueFast(elemRV); err != nil {
+				decodeErr = err
+				return false
+			}
+			slice = append(slice, elem)
+			return true
+		})
+
+		if decodeErr != nil {
+			return decodeErr
+		}
+		rv.Set(reflect.ValueOf(slice))
+		return nil
+	default:
+		return fmt.Errorf("cannot decode array to %s", rv.Type())
+	}
+}
+
+// decodeSliceFast 快速slice解码
+func (n Node) decodeSliceFast(rv reflect.Value) error {
+	length := n.Len()
+	slice := reflect.MakeSlice(rv.Type(), length, length)
+
+	var decodeErr error
+	n.ArrayForEach(func(i int, child Node) bool {
+		if decodeErr != nil {
+			return false
+		}
+		if i < length {
+			decodeErr = child.decodeValueFast(slice.Index(i))
+		}
+		return decodeErr == nil
+	})
+
+	if decodeErr != nil {
+		return decodeErr
+	}
+
+	rv.Set(slice)
+	return nil
+}
+
+// decodeArrayFixedFast 快速固定数组解码
+func (n Node) decodeArrayFixedFast(rv reflect.Value) error {
+	length := rv.Len()
+
+	var decodeErr error
+	n.ArrayForEach(func(i int, child Node) bool {
+		if decodeErr != nil {
+			return false
+		}
+		if i < length {
+			decodeErr = child.decodeValueFast(rv.Index(i))
+		}
+		return decodeErr == nil
+	})
+
+	return decodeErr
+}
+
+// decodeObjectFast 快速对象解码
+func (n Node) decodeObjectFast(rv reflect.Value) error {
+	switch rv.Kind() {
+	case reflect.Struct:
+		return n.decodeStructFast(rv)
+	case reflect.Map:
+		return n.decodeMapFast(rv)
+	case reflect.Interface:
+		// 使用预估容量减少map扩容
+		m := make(map[string]interface{}, n.Len())
+
+		var decodeErr error
+		n.ForEach(func(key string, child Node) bool {
+			if decodeErr != nil {
+				return false
+			}
+			var val interface{}
+			valRV := reflect.ValueOf(&val).Elem()
+			if err := child.decodeValueFast(valRV); err != nil {
+				decodeErr = err
+				return false
+			}
+			m[key] = val
+			return true
+		})
+
+		if decodeErr != nil {
+			return decodeErr
+		}
+		rv.Set(reflect.ValueOf(m))
+		return nil
+	default:
+		return fmt.Errorf("cannot decode object to %s", rv.Type())
+	}
+}
+
+// decodeStructFast 快速结构体解码（缓存优化版本）
+func (n Node) decodeStructFast(rv reflect.Value) error {
+	structType := rv.Type()
+	fieldMap := getStructFieldMapFast(structType)
+
+	var decodeErr error
+	n.ForEach(func(key string, child Node) bool {
+		if decodeErr != nil {
+			return false
+		}
+
+		if fieldInfo, exists := fieldMap[key]; exists {
+			fieldValue := rv.Field(fieldInfo.Index)
+			if fieldValue.CanSet() {
+				decodeErr = child.decodeValueFast(fieldValue)
+			}
+		}
+		return decodeErr == nil
+	})
+
+	return decodeErr
+}
+
+// decodeMapFast 快速map解码
+func (n Node) decodeMapFast(rv reflect.Value) error {
+	mapType := rv.Type()
+	keyType := mapType.Key()
+	valueType := mapType.Elem()
+
+	if keyType.Kind() != reflect.String {
+		return fmt.Errorf("map key must be string, got %s", keyType)
+	}
+
+	// 预分配容量
+	m := reflect.MakeMapWithSize(mapType, n.Len())
+
+	var decodeErr error
+	n.ForEach(func(key string, child Node) bool {
+		if decodeErr != nil {
+			return false
+		}
+
+		keyVal := reflect.ValueOf(key)
+		valueVal := reflect.New(valueType).Elem()
+
+		if err := child.decodeValueFast(valueVal); err != nil {
+			decodeErr = err
+			return false
+		}
+
+		m.SetMapIndex(keyVal, valueVal)
+		return true
+	})
+
+	if decodeErr != nil {
+		return decodeErr
+	}
+
+	rv.Set(m)
+	return nil
+}
+
+// getStructFieldMapFast 快速结构体字段映射（优化版本）
+func getStructFieldMapFast(t reflect.Type) map[string]structFieldInfo {
+	if cached, ok := structFieldCache.Load(t); ok {
+		return cached.(map[string]structFieldInfo)
+	}
+
+	fieldMap := make(map[string]structFieldInfo, t.NumField())
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+
+		// 跳过未导出的字段
+		if !field.IsExported() {
+			continue
+		}
+
+		jsonName := getJSONFieldNameFast(field)
+		if jsonName == "-" {
+			continue
+		}
+
+		fieldMap[jsonName] = structFieldInfo{
+			Index:    i,
+			JSONName: jsonName,
+		}
+	}
+
+	structFieldCache.Store(t, fieldMap)
+	return fieldMap
+}
+
+// getJSONFieldNameFast 快速JSON字段名提取
+func getJSONFieldNameFast(field reflect.StructField) string {
+	tag := field.Tag.Get("json")
+	if tag == "" {
+		return field.Name
+	}
+
+	// 快速解析：只取第一个逗号前的部分
+	if idx := strings.IndexByte(tag, ','); idx != -1 {
+		tag = tag[:idx]
+	}
+
+	tag = strings.TrimSpace(tag)
+	if tag == "" {
+		return field.Name
+	}
+
+	return tag
+}
+
+// decodeValue 递归解码JSON值到reflect.Value
+func (n Node) decodeValue(rv reflect.Value) error {
+	if !rv.CanSet() {
+		return fmt.Errorf("cannot set value of type %s", rv.Type())
+	}
+
+	switch n.Kind() {
+	case TypeNull:
+		rv.Set(reflect.Zero(rv.Type()))
+		return nil
+	case TypeString:
+		return n.decodeString(rv)
+	case TypeNumber:
+		return n.decodeNumber(rv)
+	case TypeBool:
+		return n.decodeBool(rv)
+	case TypeArray:
+		return n.decodeArray(rv)
+	case TypeObject:
+		return n.decodeObject(rv)
+	default:
+		return fmt.Errorf("unknown JSON type: %d", n.Kind())
+	}
+}
+
+// decodeString 解码字符串值
+func (n Node) decodeString(rv reflect.Value) error {
+	switch rv.Kind() {
+	case reflect.String:
+		str, err := n.String()
+		if err != nil {
+			return err
+		}
+		rv.SetString(str)
+		return nil
+	case reflect.Interface:
+		str, err := n.String()
+		if err != nil {
+			return err
+		}
+		rv.Set(reflect.ValueOf(str))
+		return nil
+	default:
+		return fmt.Errorf("cannot decode string to %s", rv.Type())
+	}
+}
+
+// decodeNumber 解码数字值
+func (n Node) decodeNumber(rv reflect.Value) error {
+	switch rv.Kind() {
+	case reflect.String:
+		// 支持将数字转换为字符串
+		data := n.getWorkingData()
+		jsonBytes := data[n.start:n.end]
+		rv.SetString(string(jsonBytes))
+		return nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		i, err := n.Int()
+		if err != nil {
+			return err
+		}
+		rv.SetInt(i)
+		return nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		i, err := n.Int()
+		if err != nil {
+			return err
+		}
+		if i < 0 {
+			return fmt.Errorf("cannot assign negative number %d to unsigned type %s", i, rv.Type())
+		}
+		rv.SetUint(uint64(i))
+		return nil
+	case reflect.Float32, reflect.Float64:
+		f, err := n.Float()
+		if err != nil {
+			return err
+		}
+		rv.SetFloat(f)
+		return nil
+	case reflect.Interface:
+		// 尝试解析为int，如果失败则解析为float
+		if i, err := n.Int(); err == nil {
+			rv.Set(reflect.ValueOf(i))
+			return nil
+		}
+		f, err := n.Float()
+		if err != nil {
+			return err
+		}
+		rv.Set(reflect.ValueOf(f))
+		return nil
+	default:
+		return fmt.Errorf("cannot decode number to %s", rv.Type())
+	}
+}
+
+// decodeBool 解码布尔值
+func (n Node) decodeBool(rv reflect.Value) error {
+	switch rv.Kind() {
+	case reflect.String:
+		// 支持将布尔值转换为字符串
+		data := n.getWorkingData()
+		jsonBytes := data[n.start:n.end]
+		rv.SetString(string(jsonBytes))
+		return nil
+	case reflect.Bool:
+		b, err := n.Bool()
+		if err != nil {
+			return err
+		}
+		rv.SetBool(b)
+		return nil
+	case reflect.Interface:
+		b, err := n.Bool()
+		if err != nil {
+			return err
+		}
+		rv.Set(reflect.ValueOf(b))
+		return nil
+	default:
+		return fmt.Errorf("cannot decode bool to %s", rv.Type())
+	}
+}
+
+// decodeArray 解码数组值
+func (n Node) decodeArray(rv reflect.Value) error {
+	switch rv.Kind() {
+	case reflect.Slice:
+		return n.decodeSlice(rv)
+	case reflect.Array:
+		return n.decodeArrayFixed(rv)
+	case reflect.Interface:
+		// 创建一个slice来存储数组元素
+		slice := make([]interface{}, 0, n.Len())
+		n.ArrayForEach(func(i int, child Node) bool {
+			var elem interface{}
+			elemRV := reflect.ValueOf(&elem).Elem()
+			if err := child.decodeValue(elemRV); err == nil {
+				slice = append(slice, elem)
+			}
+			return true
+		})
+		rv.Set(reflect.ValueOf(slice))
+		return nil
+	default:
+		return fmt.Errorf("cannot decode array to %s", rv.Type())
+	}
+}
+
+// decodeSlice 解码到slice
+func (n Node) decodeSlice(rv reflect.Value) error {
+	length := n.Len()
+	slice := reflect.MakeSlice(rv.Type(), length, length)
+
+	var decodeErr error
+	n.ArrayForEach(func(i int, child Node) bool {
+		if decodeErr != nil {
+			return false
+		}
+		if i < length {
+			decodeErr = child.decodeValue(slice.Index(i))
+		}
+		return true
+	})
+
+	if decodeErr != nil {
+		return decodeErr
+	}
+
+	rv.Set(slice)
+	return nil
+}
+
+// decodeArrayFixed 解码到固定长度数组
+func (n Node) decodeArrayFixed(rv reflect.Value) error {
+	length := rv.Len()
+
+	var decodeErr error
+	n.ArrayForEach(func(i int, child Node) bool {
+		if decodeErr != nil {
+			return false
+		}
+		if i < length {
+			decodeErr = child.decodeValue(rv.Index(i))
+		}
+		return true
+	})
+
+	return decodeErr
+}
+
+// decodeObject 解码对象值
+func (n Node) decodeObject(rv reflect.Value) error {
+	switch rv.Kind() {
+	case reflect.Struct:
+		return n.decodeStruct(rv)
+	case reflect.Map:
+		return n.decodeMap(rv)
+	case reflect.Interface:
+		// 创建map[string]interface{}来存储对象
+		m := make(map[string]interface{})
+		n.ForEach(func(key string, child Node) bool {
+			var val interface{}
+			valRV := reflect.ValueOf(&val).Elem()
+			if err := child.decodeValue(valRV); err == nil {
+				m[key] = val
+			}
+			return true
+		})
+		rv.Set(reflect.ValueOf(m))
+		return nil
+	default:
+		return fmt.Errorf("cannot decode object to %s", rv.Type())
+	}
+}
+
+// decodeStruct 解码到结构体
+func (n Node) decodeStruct(rv reflect.Value) error {
+	structType := rv.Type()
+	fieldMap := getStructFieldMap(structType)
+
+	var decodeErr error
+	n.ForEach(func(key string, child Node) bool {
+		if decodeErr != nil {
+			return false
+		}
+
+		if fieldInfo, exists := fieldMap[key]; exists {
+			fieldValue := rv.Field(fieldInfo.Index)
+			if fieldValue.CanSet() {
+				decodeErr = child.decodeValue(fieldValue)
+			}
+		}
+		return true
+	})
+
+	return decodeErr
+}
+
+// decodeMap 解码到map
+func (n Node) decodeMap(rv reflect.Value) error {
+	mapType := rv.Type()
+	keyType := mapType.Key()
+	valueType := mapType.Elem()
+
+	if keyType.Kind() != reflect.String {
+		return fmt.Errorf("map key must be string, got %s", keyType)
+	}
+
+	m := reflect.MakeMap(mapType)
+
+	var decodeErr error
+	n.ForEach(func(key string, child Node) bool {
+		if decodeErr != nil {
+			return false
+		}
+
+		keyVal := reflect.ValueOf(key)
+		valueVal := reflect.New(valueType).Elem()
+
+		if err := child.decodeValue(valueVal); err != nil {
+			decodeErr = err
+			return false
+		}
+
+		m.SetMapIndex(keyVal, valueVal)
+		return true
+	})
+
+	if decodeErr != nil {
+		return decodeErr
+	}
+
+	rv.Set(m)
+	return nil
+}
+
+// structFieldInfo 存储结构体字段信息
+type structFieldInfo struct {
+	Index    int    // 字段在结构体中的索引
+	JSONName string // JSON标签名或字段名
+}
+
+// structFieldMap 缓存结构体字段映射
+var structFieldCache = sync.Map{}
+
+// getStructFieldMap 获取结构体字段映射
+func getStructFieldMap(t reflect.Type) map[string]structFieldInfo {
+	if cached, ok := structFieldCache.Load(t); ok {
+		return cached.(map[string]structFieldInfo)
+	}
+
+	fieldMap := make(map[string]structFieldInfo)
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+
+		// 跳过未导出的字段
+		if !field.IsExported() {
+			continue
+		}
+
+		jsonName := getJSONFieldName(field)
+		if jsonName == "-" {
+			// json:"-" 表示忽略此字段
+			continue
+		}
+
+		fieldMap[jsonName] = structFieldInfo{
+			Index:    i,
+			JSONName: jsonName,
+		}
+	}
+
+	structFieldCache.Store(t, fieldMap)
+	return fieldMap
+}
+
+// getJSONFieldName 从结构体字段获取JSON字段名
+func getJSONFieldName(field reflect.StructField) string {
+	tag := field.Tag.Get("json")
+	if tag == "" {
+		return field.Name
+	}
+
+	// 解析json标签: "name,omitempty" -> "name"
+	parts := strings.Split(tag, ",")
+	if len(parts) == 0 {
+		return field.Name
+	}
+
+	jsonName := strings.TrimSpace(parts[0])
+	if jsonName == "" {
+		return field.Name
+	}
+
+	return jsonName
+}
+
+// DecodeStruct 是一个优化版本的Decode方法，专门用于结构体解码
+// 避免创建Node的开销，直接使用字节切片
+func DecodeStruct(data []byte, v any) error {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr {
+		return fmt.Errorf("v must be a pointer: got kind=%s, type=%T", rv.Kind(), v)
+	}
+	if rv.IsNil() {
+		return fmt.Errorf("v must be a non-nil pointer: type=%T", v)
+	}
+
+	// 直接解析，避免FromBytes的额外开销
+	return decodeStructFromBytes(data, rv.Elem())
+}
+
+// decodeStructFromBytes 直接从字节切片解码到结构体，避免Node创建开销
+func decodeStructFromBytes(data []byte, rv reflect.Value) error {
+	if len(data) == 0 {
+		return fmt.Errorf("empty data")
+	}
+
+	// 快速查找JSON对象的开始和结束
+	start := 0
+	for start < len(data) && data[start] <= ' ' {
+		start++
+	}
+	if start >= len(data) || data[start] != '{' {
+		return fmt.Errorf("data is not a JSON object")
+	}
+
+	end := len(data)
+	node := Node{raw: data, start: start, end: end, typ: 'o'}
+	return node.decodeStructFast(rv)
+}
+
+// DecodeStructFast 极致优化的结构体解码函数
+func DecodeStructFast(data []byte, v any) error {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr {
+		return fmt.Errorf("v must be a pointer: got kind=%s, type=%T", rv.Kind(), v)
+	}
+	if rv.IsNil() {
+		return fmt.Errorf("v must be a non-nil pointer: type=%T", v)
+	}
+
+	elem := rv.Elem()
+	if elem.Kind() != reflect.Struct {
+		return fmt.Errorf("v must point to a struct, got %s", elem.Kind())
+	}
+
+	return decodeStructDirectly(data, elem)
+}
+
+// decodeStructDirectly 直接解码结构体，跳过所有中间步骤
+func decodeStructDirectly(data []byte, rv reflect.Value) error {
+	if len(data) == 0 {
+		return fmt.Errorf("empty JSON data")
+	}
+
+	// 获取结构体类型信息
+	structType := rv.Type()
+	fieldMap := getStructFieldMapFast(structType)
+
+	// 快速扫描JSON对象
+	pos := 0
+	for pos < len(data) && data[pos] <= ' ' {
+		pos++
+	}
+	if pos >= len(data) || data[pos] != '{' {
+		return fmt.Errorf("invalid JSON object")
+	}
+	pos++ // skip '{'
+
+	for pos < len(data) {
+		// 跳过空白
+		for pos < len(data) && data[pos] <= ' ' {
+			pos++
+		}
+		if pos >= len(data) || data[pos] == '}' {
+			break
+		}
+
+		// 解析键
+		if data[pos] != '"' {
+			return fmt.Errorf("expected key at position %d", pos)
+		}
+		pos++
+		keyStart := pos
+
+		// 快速键扫描
+		for pos < len(data) && data[pos] != '"' {
+			if data[pos] == '\\' {
+				pos += 2
+			} else {
+				pos++
+			}
+		}
+		keyEnd := pos
+		pos++ // skip closing quote
+
+		// 零拷贝键提取
+		key := unsafe.String(&data[keyStart], keyEnd-keyStart)
+
+		// 跳过冒号
+		for pos < len(data) && data[pos] <= ' ' {
+			pos++
+		}
+		if pos >= len(data) || data[pos] != ':' {
+			return fmt.Errorf("expected ':' at position %d", pos)
+		}
+		pos++
+		for pos < len(data) && data[pos] <= ' ' {
+			pos++
+		}
+
+		// 查找对应的结构体字段
+		if fieldInfo, exists := fieldMap[key]; exists {
+			fieldValue := rv.Field(fieldInfo.Index)
+			if fieldValue.CanSet() {
+				// 解析值并直接设置到字段
+				valueEnd := skipValueFast(data, pos, len(data))
+				if valueEnd <= pos {
+					return fmt.Errorf("invalid value at position %d", pos)
+				}
+
+				// 创建临时节点进行解码
+				valueNode := Node{
+					raw:   data,
+					start: pos,
+					end:   valueEnd,
+					typ:   detectType(data[pos]),
+				}
+
+				if err := valueNode.decodeValueFast(fieldValue); err != nil {
+					return fmt.Errorf("failed to decode field %s: %v", key, err)
+				}
+
+				pos = valueEnd
+			} else {
+				// 跳过无法设置的字段
+				pos = skipValueFast(data, pos, len(data))
+			}
+		} else {
+			// 跳过未匹配的字段
+			pos = skipValueFast(data, pos, len(data))
+		}
+
+		// 跳过逗号
+		for pos < len(data) && data[pos] <= ' ' {
+			pos++
+		}
+		if pos < len(data) && data[pos] == ',' {
+			pos++
+		}
+	}
+
 	return nil
 }
 
