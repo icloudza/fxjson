@@ -1,8 +1,8 @@
 package fxjson
 
 import (
-	"crypto/md5"
 	"fmt"
+	"hash/crc32"
 	"sync"
 	"time"
 )
@@ -203,10 +203,16 @@ func EnableCaching(cache Cache) {
 	globalCache = cache
 }
 
+// DisableCaching 禁用全局缓存
+func DisableCaching() {
+	globalCache = nil
+}
+
 // generateCacheKey 生成缓存键
+// 使用CRC32代替MD5以提高性能，因为我们只需要快速哈希而不需要加密强度
 func generateCacheKey(data []byte) string {
-	hash := md5.Sum(data)
-	return fmt.Sprintf("fxjson:%x", hash)
+	hash := crc32.ChecksumIEEE(data)
+	return fmt.Sprintf("fxjson:%08x", hash)
 }
 
 // FromBytesWithCache 带缓存的JSON解析

@@ -192,6 +192,12 @@ func isValidJSON(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
+	// 只有以 {, [, " 开头的才可能是嵌套的 JSON
+	// 数字、布尔值和 null 不应该被展开
+	firstChar := s[0]
+	if firstChar != '{' && firstChar != '[' && firstChar != '"' {
+		return false
+	}
 	// 使用简化的验证，避免循环依赖
 	return isValidJSONSimple([]byte(s))
 }

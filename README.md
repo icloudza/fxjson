@@ -5,7 +5,8 @@
 
 [📄 中文文档 / Chinese Documentation](README_ZH.md)
 
-FxJSON is a Go JSON parsing library focused on performance, providing efficient JSON traversal and access capabilities. It offers improved performance compared to the standard library while maintaining memory safety and ease of use.
+FxJSON is a Go JSON parsing library focused on performance, providing efficient JSON traversal and access capabilities.
+It offers improved performance compared to the standard library while maintaining memory safety and ease of use.
 
 ## 🚀 Core Features
 
@@ -27,6 +28,7 @@ FxJSON is a Go JSON parsing library focused on performance, providing efficient 
 ## 📊 Performance Comparison
 
 ### Core Operations
+
 | Operation            | FxJSON   | Standard Library | Performance Gain | Memory Advantage               |
 |----------------------|----------|------------------|------------------|--------------------------------|
 | ForEach Traversal    | 104.7 ns | 2115 ns          | **20.2x**        | Zero allocations vs 57 allocs  |
@@ -36,19 +38,20 @@ FxJSON is a Go JSON parsing library focused on performance, providing efficient 
 | Large Data Traversal | 11302 ns | 16670 ns         | **1.5x**         | 181 allocs vs 559 allocs       |
 
 ### Advanced Features Performance
-| Feature              | Operation Time | Memory Usage | Allocations | Note                    |
-|----------------------|----------------|--------------|-------------|-------------------------|
-| Basic Parsing        | 5,542 ns       | 6,360 B      | 50 allocs   | Standard JSON parsing   |
-| **Cached Parsing**   | **1,396 ns**   | **80 B**     | **3 allocs**| **4x faster, 98% less memory** |
-| Data Transformation  | 435 ns         | 368 B        | 5 allocs    | Field mapping & conversion |
-| Data Validation      | 208 ns         | 360 B        | 4 allocs    | Rule-based validation   |
-| Simple Query         | 2,784 ns       | 640 B        | 14 allocs   | Conditional filtering   |
-| Complex Query        | 4,831 ns       | 1,720 B      | 52 allocs   | Multi-condition with sort |
-| Data Aggregation     | 4,213 ns       | 2,640 B      | 32 allocs   | Statistical operations  |
-| Large Data Query     | 1.27 ms        | 82 B         | 2 allocs    | 100 records processing |
-| Stream Processing    | 2,821 ns       | 0 B          | 0 allocs    | Zero-allocation streaming |
-| JSON Diff            | 17,200 ns      | 2,710 B      | 197 allocs  | Change detection        |
-| Empty String Handling| 3,007 ns       | 1,664 B      | 27 allocs   | Safe empty string processing |
+
+| Feature               | Operation Time | Memory Usage | Allocations  | Note                           |
+|-----------------------|----------------|--------------|--------------|--------------------------------|
+| Basic Parsing         | 5,542 ns       | 6,360 B      | 50 allocs    | Standard JSON parsing          |
+| **Cached Parsing**    | **1,396 ns**   | **80 B**     | **3 allocs** | **4x faster, 98% less memory** |
+| Data Transformation   | 435 ns         | 368 B        | 5 allocs     | Field mapping & conversion     |
+| Data Validation       | 208 ns         | 360 B        | 4 allocs     | Rule-based validation          |
+| Simple Query          | 2,784 ns       | 640 B        | 14 allocs    | Conditional filtering          |
+| Complex Query         | 4,831 ns       | 1,720 B      | 52 allocs    | Multi-condition with sort      |
+| Data Aggregation      | 4,213 ns       | 2,640 B      | 32 allocs    | Statistical operations         |
+| Large Data Query      | 1.27 ms        | 82 B         | 2 allocs     | 100 records processing         |
+| Stream Processing     | 2,821 ns       | 0 B          | 0 allocs     | Zero-allocation streaming      |
+| JSON Diff             | 17,200 ns      | 2,710 B      | 197 allocs   | Change detection               |
+| Empty String Handling | 3,007 ns       | 1,664 B      | 27 allocs    | Safe empty string processing   |
 
 # FxJSON ![Flame](flame.png) - High-Performance JSON Parser
 
@@ -66,12 +69,12 @@ go get github.com/icloudza/fxjson
 package main
 
 import (
-    "fmt"
-    "github.com/icloudza/fxjson"
+	"fmt"
+	"github.com/icloudza/fxjson"
 )
 
 func main() {
-    jsonData := []byte(`{
+	jsonData := []byte(`{
         "name": "Alice",
         "age": 30,
         "active": true,
@@ -83,29 +86,30 @@ func main() {
         }
     }`)
 
-    // Create node
-    node := fxjson.FromBytes(jsonData)
+	// Create node
+	node := fxjson.FromBytes(jsonData)
 
-    // Basic access
-    name, _ := node.Get("name").String()
-    age, _ := node.Get("age").Int()
-    active, _ := node.Get("active").Bool()
-    score, _ := node.Get("score").Float()
+	// Basic access
+	name, _ := node.Get("name").String()
+	age, _ := node.Get("age").Int()
+	active, _ := node.Get("active").Bool()
+	score, _ := node.Get("score").Float()
 
-    fmt.Printf("Name: %s, Age: %d, Active: %v, Score: %.1f\n", 
-               name, age, active, score)
-    
-    // Nested access
-    city, _ := node.Get("profile").Get("city").String()
-    fmt.Printf("City: %s\n", city)
-    
-    // Path access
-    hobby, _ := node.GetPath("profile.hobby").String()
-    fmt.Printf("Hobby: %s\n", hobby)
+	fmt.Printf("Name: %s, Age: %d, Active: %v, Score: %.1f\n",
+		name, age, active, score)
+
+	// Nested access
+	city, _ := node.Get("profile").Get("city").String()
+	fmt.Printf("City: %s\n", city)
+
+	// Path access
+	hobby, _ := node.GetPath("profile.hobby").String()
+	fmt.Printf("Hobby: %s\n", hobby)
 }
 ```
 
 **Output:**
+
 ```
 Name: Alice, Age: 30, Active: true, Score: 95.5
 City: Beijing
@@ -141,10 +145,365 @@ fmt.Printf("Second user: %s\n", secondName)
 ```
 
 **Output:**
+
 ```
 User count: 3
 First user: Alice (30 years old)
 Second user: Bob
+```
+
+## 🆕 Utility Functions Examples
+
+### Default Value Functions - Elegant Error Handling
+
+```go
+// Traditional way (requires error handling)
+name, err := node.Get("name").String()
+if err != nil {
+name = "default name"
+}
+
+// Using default value functions (clean and elegant)
+name := node.Get("name").StringOr("default name")
+age := node.Get("age").IntOr(18)
+score := node.Get("score").FloatOr(0.0)
+active := node.Get("active").BoolOr(true)
+
+// Practical example: parsing user configuration
+configJSON := []byte(`{
+    "timeout": 30,
+    "retries": null,
+    "debug": false
+}`)
+
+config := fxjson.FromBytes(configJSON)
+timeout := config.Get("timeout").IntOr(60) // Returns 30
+retries := config.Get("retries").IntOr(3) // Returns 3 (default)
+debug := config.Get("debug").BoolOr(false) // Returns false
+maxSize := config.Get("maxSize").IntOr(1024) // Returns 1024 (default)
+```
+
+### Data Validation Tools - Built-in Common Validations
+
+```go
+userJSON := []byte(`{
+    "email": "user@example.com",
+    "phone": "+1234567890",
+    "website": "https://example.com",
+    "ip": "192.168.1.100",
+    "ipv6": "2001:db8::1",
+    "uuid": "550e8400-e29b-41d4-a716-446655440000"
+}`)
+
+user := fxjson.FromBytes(userJSON)
+
+// Email validation
+if user.Get("email").IsValidEmail() {
+fmt.Println("✅ Valid email format")
+}
+
+// URL validation
+if user.Get("website").IsValidURL() {
+fmt.Println("✅ Valid URL format")
+}
+
+// IP address validation
+if user.Get("ip").IsValidIPv4() {
+fmt.Println("✅ Valid IPv4 address")
+}
+if user.Get("ipv6").IsValidIPv6() {
+fmt.Println("✅ Valid IPv6 address")
+}
+
+// UUID validation
+if user.Get("uuid").IsValidUUID() {
+fmt.Println("✅ Valid UUID format")
+}
+
+// Phone number validation (E.164 format)
+if user.Get("phone").IsValidPhone() {
+fmt.Println("✅ Valid phone number format")
+}
+```
+
+### Batch Operations - Efficient Multi-field Processing
+
+```go
+// Batch get multiple path values
+orderJSON := []byte(`{
+    "order": {
+        "id": "ORD-12345",
+        "customer": {
+            "name": "John Doe",
+            "email": "john@example.com",
+            "phone": "+1234567890"
+        },
+        "items": [
+            {"name": "Product A", "price": 99.9},
+            {"name": "Product B", "price": 199.9}
+        ],
+        "total": 299.8
+    }
+}`)
+
+order := fxjson.FromBytes(orderJSON)
+
+// Get multiple paths at once
+values := order.GetMultiple(
+"order.id",
+"order.customer.name",
+"order.customer.email",
+"order.total",
+)
+
+orderId := values[0].StringOr("")
+customerName := values[1].StringOr("")
+customerEmail := values[2].StringOr("")
+total := values[3].FloatOr(0.0)
+
+// Check if all required fields exist
+requiredFields := []string{
+"order.id",
+"order.customer.name",
+"order.customer.email",
+"order.items",
+}
+
+if order.HasAllPaths(requiredFields...) {
+fmt.Println("✅ All required fields exist")
+}
+
+// Check if any contact method exists
+contactFields := []string{
+"order.customer.email",
+"order.customer.phone",
+"order.customer.wechat",
+}
+
+if order.HasAnyPath(contactFields...) {
+fmt.Println("✅ At least one contact method exists")
+}
+```
+
+### Array and Object Operations - Convenient Data Processing
+
+```go
+// Array operations example
+scoresJSON := []byte(`{
+    "scores": [85, 92, 78, 95, 88, 91],
+    "names": ["Alice", "Bob", "Charlie", "David"]
+}`)
+
+data := fxjson.FromBytes(scoresJSON)
+scores := data.Get("scores")
+names := data.Get("names")
+
+// Convenient array operations
+first := scores.First() // Get first: 85
+last := scores.Last()             // Get last: 91
+top3 := scores.Slice(0, 3)   // Get top 3: [85, 92, 78]
+reversed := scores.Reverse() // Reverse: [91, 88, 95, 78, 92, 85]
+
+// Convert to Go slice for calculations
+if scoreSlice, err := scores.ToIntSlice(); err == nil {
+sum := int64(0)
+for _, s := range scoreSlice {
+sum += s
+}
+avg := float64(sum) / float64(len(scoreSlice))
+fmt.Printf("Average score: %.2f\n", avg)
+}
+
+// Object operations example
+configJSON := []byte(`{
+    "database": {"host": "localhost", "port": 3306, "user": "root"},
+    "cache": {"host": "127.0.0.1", "port": 6379}
+}`)
+
+config := fxjson.FromBytes(configJSON)
+dbConfig := config.Get("database")
+cacheConfig := config.Get("cache")
+
+// Pick specific fields
+essentials := dbConfig.Pick("host", "port") // Keep only host and port
+safeConfig := dbConfig.Omit("user") // Exclude sensitive info
+
+// Merge configurations
+defaultsJSON := []byte(`{"timeout": 30, "maxRetries": 3}`)
+defaults := fxjson.FromBytes(defaultsJSON)
+merged := dbConfig.Merge(defaults) // Merge with defaults
+```
+
+### String Operations - Built-in String Processing
+
+```go
+textJSON := []byte(`{
+    "title": "  Hello World  ",
+    "description": "This is a SAMPLE text",
+    "url": "https://example.com/api",
+    "filename": "document.pdf"
+}`)
+
+doc := fxjson.FromBytes(textJSON)
+
+// String operations
+title := doc.Get("title")
+trimmed, _ := title.Trim() // "Hello World"
+lower, _ := title.ToLower() // "  hello world  "
+upper, _ := title.ToUpper() // "  HELLO WORLD  "
+
+// String checks
+url := doc.Get("url")
+if url.Contains("example.com") {
+fmt.Println("URL contains example.com")
+}
+if url.StartsWith("https://") {
+fmt.Println("Using HTTPS protocol")
+}
+
+filename := doc.Get("filename")
+if filename.EndsWith(".pdf") {
+fmt.Println("This is a PDF file")
+}
+```
+
+### Comparison and Validation - Data State Checking
+
+```go
+dataJSON := []byte(`{
+    "count": 0,
+    "price": 19.99,
+    "discount": -5.0,
+    "quantity": 10,
+    "items": [],
+    "description": "",
+    "metadata": null
+}`)
+
+node := fxjson.FromBytes(dataJSON)
+
+// Number validation
+count := node.Get("count")
+if count.IsZero() {
+fmt.Println("Count is zero")
+}
+
+price := node.Get("price")
+if price.IsPositive() {
+fmt.Println("Price is positive")
+}
+
+discount := node.Get("discount")
+if discount.IsNegative() {
+fmt.Println("Discount is negative (reduction)")
+}
+
+quantity := node.Get("quantity")
+if quantity.IsInteger() && quantity.InRange(1, 100) {
+fmt.Println("Quantity is in valid range")
+}
+
+// Empty checks
+if node.Get("items").IsEmpty() {
+fmt.Println("items array is empty")
+}
+if node.Get("description").IsEmpty() {
+fmt.Println("description is empty string")
+}
+if node.Get("metadata").IsEmpty() {
+fmt.Println("metadata is null")
+}
+
+// Node comparison
+node1 := fxjson.FromBytes([]byte(`{"a": 1, "b": 2}`))
+node2 := fxjson.FromBytes([]byte(`{"a": 1, "b": 2}`))
+if node1.Equals(node2) {
+fmt.Println("Two JSON nodes are equal")
+}
+```
+
+### Type Conversion Tools - Batch Data Conversion
+
+```go
+// Convert JSON arrays to Go slices
+dataJSON := []byte(`{
+    "tags": ["golang", "json", "performance"],
+    "scores": [95, 87, 92, 88],
+    "prices": [19.99, 29.99, 39.99],
+    "flags": [true, false, true]
+}`)
+
+data := fxjson.FromBytes(dataJSON)
+
+// Convert to string slice
+if tags, err := data.Get("tags").ToStringSlice(); err == nil {
+fmt.Printf("Tags: %v\n", tags)
+// Can use Go's string slice features directly
+joined := strings.Join(tags, ", ")
+fmt.Printf("Tag list: %s\n", joined)
+}
+
+// Convert to integer slice
+if scores, err := data.Get("scores").ToIntSlice(); err == nil {
+// Calculate total
+total := int64(0)
+for _, score := range scores {
+total += score
+}
+fmt.Printf("Total score: %d\n", total)
+}
+
+// Convert to float slice
+if prices, err := data.Get("prices").ToFloatSlice(); err == nil {
+// Calculate sum
+sum := 0.0
+for _, price := range prices {
+sum += price
+}
+fmt.Printf("Total price: %.2f\n", sum)
+}
+
+// Convert to boolean slice
+if flags, err := data.Get("flags").ToBoolSlice(); err == nil {
+// Count true values
+trueCount := 0
+for _, flag := range flags {
+if flag {
+trueCount++
+}
+}
+fmt.Printf("Enabled features: %d\n", trueCount)
+}
+```
+
+### Enhanced Error Handling - Detailed Error Information
+
+```go
+// Using enhanced error system for detailed information
+jsonData := []byte(`{"age": "twenty"}`)
+node := fxjson.FromBytes(jsonData)
+
+if _, err := node.Get("age").Int(); err != nil {
+// Convert to FxJSONError for detailed information
+if fxErr, ok := err.(*fxjson.FxJSONError); ok {
+fmt.Printf("Error Type: %s\n", fxErr.Type)
+fmt.Printf("Error Message: %s\n", fxErr.Message)
+fmt.Printf("Error Position: Line %d, Column %d\n", fxErr.Line, fxErr.Column)
+fmt.Printf("Context: %s\n", fxErr.Context)
+}
+}
+
+// Create custom errors
+if !node.HasKey("required_field") {
+err := fxjson.NewNotFoundError("required_field")
+fmt.Printf("Error: %v\n", err)
+}
+
+// Validation errors
+if !node.Get("email").IsValidEmail() {
+err := fxjson.NewValidationError("email", "invalid email format")
+fmt.Printf("Validation failed: %v\n", err)
+}
 ```
 
 ## 🔄 High-Performance Traversal
@@ -162,25 +521,26 @@ profile := []byte(`{
 node := fxjson.FromBytes(profile)
 
 // Zero-allocation high-performance traversal
-node.ForEach(func(key string, value fxjson.Node) bool {
-    switch value.Kind() {
-    case fxjson.TypeString:
-        str, _ := value.String()
-        fmt.Printf("%s: %s\n", key, str)
-    case fxjson.TypeNumber:
-        num, _ := value.Int()
-        fmt.Printf("%s: %d\n", key, num)
-    case fxjson.TypeBool:
-        b, _ := value.Bool()
-        fmt.Printf("%s: %v\n", key, b)
-    case fxjson.TypeArray:
-        fmt.Printf("%s: [array, length=%d]\n", key, value.Len())
-    }
-    return true // continue traversal
+node.ForEach(func (key string, value fxjson.Node) bool {
+switch value.Kind() {
+case fxjson.TypeString:
+str, _ := value.String()
+fmt.Printf("%s: %s\n", key, str)
+case fxjson.TypeNumber:
+num, _ := value.Int()
+fmt.Printf("%s: %d\n", key, num)
+case fxjson.TypeBool:
+b, _ := value.Bool()
+fmt.Printf("%s: %v\n", key, b)
+case fxjson.TypeArray:
+fmt.Printf("%s: [array, length=%d]\n", key, value.Len())
+}
+return true // continue traversal
 })
 ```
 
 **Output:**
+
 ```
 name: Developer
 skills: [array, length=3]
@@ -199,18 +559,19 @@ var count int
 
 // Ultra-fast array traversal (67x performance boost)
 node.ArrayForEach(func(index int, value fxjson.Node) bool {
-    if score, err := value.Int(); err == nil {
-        total += score
-        count++
-        fmt.Printf("Score %d: %d\n", index+1, score)
-    }
-    return true
+if score, err := value.Int(); err == nil {
+total += score
+count++
+fmt.Printf("Score %d: %d\n", index+1, score)
+}
+return true
 })
 
 fmt.Printf("Average score: %.1f\n", float64(total)/float64(count))
 ```
 
 **Output:**
+
 ```
 Score 1: 95
 Score 2: 87
@@ -241,16 +602,17 @@ complexData := []byte(`{
 node := fxjson.FromBytes(complexData)
 
 // Depth-first traversal of entire JSON tree
-node.Walk(func(path string, node fxjson.Node) bool {
-    if node.IsString() {
-        value, _ := node.String()
-        fmt.Printf("Path: %s = %s\n", path, value)
-    }
-    return true // continue traversing child nodes
+node.Walk(func (path string, node fxjson.Node) bool {
+if node.IsString() {
+value, _ := node.String()
+fmt.Printf("Path: %s = %s\n", path, value)
+}
+return true // continue traversing child nodes
 })
 ```
 
 **Output:**
+
 ```
 Path: company.name = Tech Company
 Path: company.departments[0].name = R&D
@@ -284,16 +646,17 @@ fmt.Printf("scores is array: %v\n", node.Get("scores").IsArray())
 
 // Safe type conversion
 if userID, err := node.Get("user_id").Int(); err == nil {
-    fmt.Printf("User ID: %d\n", userID)
+fmt.Printf("User ID: %d\n", userID)
 }
 
 // Get raw JSON
 if rawScores := node.Get("scores").Raw(); len(rawScores) > 0 {
-    fmt.Printf("Raw scores JSON: %s\n", rawScores)
+fmt.Printf("Raw scores JSON: %s\n", rawScores)
 }
 ```
 
 **Output:**
+
 ```
 user_id is number: true
 username is string: true
@@ -321,27 +684,28 @@ node := fxjson.FromBytes(data)
 // Maintain original JSON number format
 price := node.Get("price")
 if priceStr, err := price.FloatString(); err == nil {
-    fmt.Printf("Price: %s\n", priceStr) // Output: 1.1 (preserves original format)
+fmt.Printf("Price: %s\n", priceStr) // Output: 1.1 (preserves original format)
 }
 
 rating := node.Get("rating")
 if ratingStr, err := rating.FloatString(); err == nil {
-    fmt.Printf("Rating: %s\n", ratingStr) // Output: 4.50 (preserves trailing zero)
+fmt.Printf("Rating: %s\n", ratingStr) // Output: 4.50 (preserves trailing zero)
 }
 
 // Compare with other methods
 if floatVal, err := price.Float(); err == nil {
-    fmt.Printf("Price as float: %v\n", floatVal)     // Output: 1.1
-    fmt.Printf("Price formatted: %g\n", floatVal)    // Output: 1.1
+fmt.Printf("Price as float: %v\n", floatVal) // Output: 1.1
+fmt.Printf("Price formatted: %g\n", floatVal) // Output: 1.1
 }
 
 // Get original number string
 if numStr, err := price.NumStr(); err == nil {
-    fmt.Printf("Price NumStr: %s\n", numStr)         // Output: 1.1
+fmt.Printf("Price NumStr: %s\n", numStr) // Output: 1.1
 }
 ```
 
 **Output:**
+
 ```
 Price: 1.1
 Rating: 4.50
@@ -351,6 +715,7 @@ Price NumStr: 1.1
 ```
 
 **Methods for number handling:**
+
 - `FloatString()` - Returns original JSON number format (recommended for display)
 - `NumStr()` - Returns raw number string from JSON
 - `Float()` - Returns `float64` value for calculations
@@ -373,32 +738,33 @@ node := fxjson.FromBytes(students)
 studentsArray := node.Get("students")
 
 // Find first Math student
-_, student, found := studentsArray.FindInArray(func(index int, value fxjson.Node) bool {
-    subject, _ := value.Get("subject").String()
-    return subject == "Math"
+_, student, found := studentsArray.FindInArray(func (index int, value fxjson.Node) bool {
+subject, _ := value.Get("subject").String()
+return subject == "Math"
 })
 
 if found {
-    name, _ := student.Get("name").String()
-    grade, _ := student.Get("grade").Int()
-    fmt.Printf("First Math student: %s (grade: %d)\n", name, grade)
+name, _ := student.Get("name").String()
+grade, _ := student.Get("grade").Int()
+fmt.Printf("First Math student: %s (grade: %d)\n", name, grade)
 }
 
 // Filter all high-score students (>90)
-highScoreStudents := studentsArray.FilterArray(func(index int, value fxjson.Node) bool {
-    grade, _ := value.Get("grade").Int()
-    return grade > 90
+highScoreStudents := studentsArray.FilterArray(func (index int, value fxjson.Node) bool {
+grade, _ := value.Get("grade").Int()
+return grade > 90
 })
 
 fmt.Printf("High-score students count: %d\n", len(highScoreStudents))
 for i, student := range highScoreStudents {
-    name, _ := student.Get("name").String()
-    grade, _ := student.Get("grade").Int()
-    fmt.Printf("High-score student %d: %s (%d points)\n", i+1, name, grade)
+name, _ := student.Get("name").String()
+grade, _ := student.Get("grade").Int()
+fmt.Printf("High-score student %d: %s (%d points)\n", i+1, name, grade)
 }
 ```
 
 **Output:**
+
 ```
 First Math student: Alice (grade: 95)
 High-score students count: 2
@@ -422,21 +788,21 @@ node := fxjson.FromBytes(data)
 salesArray := node.Get("sales")
 
 // Count North region sales
-northCount := salesArray.CountIf(func(index int, value fxjson.Node) bool {
-    region, _ := value.Get("region").String()
-    return region == "North"
+northCount := salesArray.CountIf(func (index int, value fxjson.Node) bool {
+region, _ := value.Get("region").String()
+return region == "North"
 })
 
 // Check if all sales are above 1000
-allAbove1000 := salesArray.AllMatch(func(index int, value fxjson.Node) bool {
-    amount, _ := value.Get("amount").Int()
-    return amount > 1000
+allAbove1000 := salesArray.AllMatch(func (index int, value fxjson.Node) bool {
+amount, _ := value.Get("amount").Int()
+return amount > 1000
 })
 
 // Check if any sales exceed 2000
-hasHighSales := salesArray.AnyMatch(func(index int, value fxjson.Node) bool {
-    amount, _ := value.Get("amount").Int()
-    return amount > 2000
+hasHighSales := salesArray.AnyMatch(func (index int, value fxjson.Node) bool {
+amount, _ := value.Get("amount").Int()
+return amount > 2000
 })
 
 fmt.Printf("North region records: %d\n", northCount)
@@ -445,6 +811,7 @@ fmt.Printf("Has sales > 2000: %v\n", hasHighSales)
 ```
 
 **Output:**
+
 ```
 North region records: 2
 All above 1000: true
@@ -468,30 +835,31 @@ node := fxjson.FromBytes(complexJSON)
 // FxJSON automatically recognizes and expands nested JSON strings
 userInfo := node.Get("user_info")
 if userInfo.IsObject() { // Nested JSON is automatically expanded to object
-    name, _ := userInfo.Get("name").String()
-    age, _ := userInfo.Get("age").Int()
-    fmt.Printf("User: %s, Age: %d\n", name, age)
-    
-    // Traverse skills array
-    fmt.Print("Skills: ")
-    userInfo.Get("skills").ArrayForEach(func(index int, skill fxjson.Node) bool {
-        skillName, _ := skill.String()
-        fmt.Printf("%s ", skillName)
-        return true
-    })
-    fmt.Println()
+name, _ := userInfo.Get("name").String()
+age, _ := userInfo.Get("age").Int()
+fmt.Printf("User: %s, Age: %d\n", name, age)
+
+// Traverse skills array
+fmt.Print("Skills: ")
+userInfo.Get("skills").ArrayForEach(func (index int, skill fxjson.Node) bool {
+skillName, _ := skill.String()
+fmt.Printf("%s ", skillName)
+return true
+})
+fmt.Println()
 }
 
 // Config is also automatically expanded
 config := node.Get("config")
 if config.IsObject() {
-    theme, _ := config.Get("theme").String()
-    language, _ := config.Get("language").String()
-    fmt.Printf("Theme: %s, Language: %s\n", theme, language)
+theme, _ := config.Get("theme").String()
+language, _ := config.Get("language").String()
+fmt.Printf("Theme: %s, Language: %s\n", theme, language)
 }
 ```
 
 **Output:**
+
 ```
 User: John, Age: 30
 Skills: Go Python 
@@ -528,8 +896,8 @@ dbPort, _ := config.GetPath("database.port").Int()
 sslEnabled, _ := config.GetPath("database.ssl").Bool()
 maxPool, _ := config.GetPath("database.pool.max").Int()
 
-fmt.Printf("Database: %s:%d (SSL: %v, Max Pool: %d)\n", 
-           dbHost, dbPort, sslEnabled, maxPool)
+fmt.Printf("Database: %s:%d (SSL: %v, Max Pool: %d)\n",
+dbHost, dbPort, sslEnabled, maxPool)
 
 // Redis configuration
 redisHost, _ := config.GetPath("redis.host").String()
@@ -540,14 +908,15 @@ fmt.Printf("Redis: %s:%d\n", redisHost, redisPort)
 features := config.Get("features")
 fmt.Printf("Enabled features (%d items): ", features.Len())
 features.ArrayForEach(func(index int, feature fxjson.Node) bool {
-    name, _ := feature.String()
-    fmt.Printf("%s ", name)
-    return true
+name, _ := feature.String()
+fmt.Printf("%s ", name)
+return true
 })
 fmt.Println()
 ```
 
 **Output:**
+
 ```
 Database: localhost:5432 (SSL: true, Max Pool: 100)
 Redis: 127.0.0.1:6379
@@ -562,10 +931,10 @@ FxJSON provides multiple optimized decoding methods for different performance re
 
 ```go
 type User struct {
-    Name  string   `json:"name"`
-    Age   int      `json:"age"`
-    Tags  []string `json:"tags"`
-    Email string   `json:"email"`
+Name  string   `json:"name"`
+Age   int      `json:"age"`
+Tags  []string `json:"tags"`
+Email string   `json:"email"`
 }
 
 jsonData := []byte(`{
@@ -579,17 +948,18 @@ node := fxjson.FromBytes(jsonData)
 
 var user User
 if err := node.Decode(&user); err != nil {
-    fmt.Printf("Decode error: %v\n", err)
+fmt.Printf("Decode error: %v\n", err)
 } else {
-    fmt.Printf("Decode result:\n")
-    fmt.Printf("  Name: %s\n", user.Name)
-    fmt.Printf("  Age: %d\n", user.Age)
-    fmt.Printf("  Email: %s\n", user.Email)
-    fmt.Printf("  Tags: %v\n", user.Tags)
+fmt.Printf("Decode result:\n")
+fmt.Printf("  Name: %s\n", user.Name)
+fmt.Printf("  Age: %d\n", user.Age)
+fmt.Printf("  Email: %s\n", user.Email)
+fmt.Printf("  Tags: %v\n", user.Tags)
 }
 ```
 
 **Output:**
+
 ```
 Decode result:
   Name: Developer
@@ -606,21 +976,22 @@ For better performance, you can decode directly from bytes without creating a No
 // DecodeStruct - Direct decoding from bytes (faster)
 var user1 User
 if err := fxjson.DecodeStruct(jsonData, &user1); err != nil {
-    fmt.Printf("DecodeStruct error: %v\n", err)
+fmt.Printf("DecodeStruct error: %v\n", err)
 } else {
-    fmt.Printf("DecodeStruct result: %+v\n", user1)
+fmt.Printf("DecodeStruct result: %+v\n", user1)
 }
 
 // DecodeStructFast - Ultra-fast decoding (fastest)
 var user2 User
 if err := fxjson.DecodeStructFast(jsonData, &user2); err != nil {
-    fmt.Printf("DecodeStructFast error: %v\n", err)
+fmt.Printf("DecodeStructFast error: %v\n", err)
 } else {
-    fmt.Printf("DecodeStructFast result: %+v\n", user2)
+fmt.Printf("DecodeStructFast result: %+v\n", user2)
 }
 ```
 
 **Output:**
+
 ```
 DecodeStruct result: {Name:Developer Age:28 Tags:[golang json performance] Email:dev@example.com}
 DecodeStructFast result: {Name:Developer Age:28 Tags:[golang json performance] Email:dev@example.com}
@@ -628,24 +999,24 @@ DecodeStructFast result: {Name:Developer Age:28 Tags:[golang json performance] E
 
 ### Performance Comparison
 
-| Method | Speed | Use Case |
-|--------|-------|----------|
-| `node.Decode()` | Fast | When you need Node functionality |
-| `DecodeStruct()` | Faster | Direct struct decoding |
-| `DecodeStructFast()` | Fastest | Performance-critical scenarios |
+| Method               | Speed   | Use Case                         |
+|----------------------|---------|----------------------------------|
+| `node.Decode()`      | Fast    | When you need Node functionality |
+| `DecodeStruct()`     | Faster  | Direct struct decoding           |
+| `DecodeStructFast()` | Fastest | Performance-critical scenarios   |
 
 ### Complex Struct Decoding
 
 ```go
 type ComplexUser struct {
-    ID       int    `json:"id"`
-    Name     string `json:"name"`
-    Profile  struct {
-        Avatar string   `json:"avatar"`
-        Bio    string   `json:"bio"`
-        Skills []string `json:"skills"`
-    } `json:"profile"`
-    Metadata map[string]interface{} `json:"metadata"`
+ID       int    `json:"id"`
+Name     string `json:"name"`
+Profile  struct {
+Avatar string   `json:"avatar"`
+Bio    string   `json:"bio"`
+Skills []string `json:"skills"`
+} `json:"profile"`
+Metadata map[string]interface{} `json:"metadata"`
 }
 
 complexJSON := []byte(`{
@@ -667,8 +1038,8 @@ complexJSON := []byte(`{
 
 var complexUser ComplexUser
 if err := fxjson.DecodeStructFast(complexJSON, &complexUser); err != nil {
-    fmt.Printf("Error: %v\n", err)
-    return
+fmt.Printf("Error: %v\n", err)
+return
 }
 
 fmt.Printf("User ID: %d\n", complexUser.ID)
@@ -679,6 +1050,7 @@ fmt.Printf("Metadata: %+v\n", complexUser.Metadata)
 ```
 
 **Output:**
+
 ```
 User ID: 12345
 Name: Advanced Developer
@@ -701,23 +1073,23 @@ node := fxjson.FromBytes(jsonData)
 
 // Type conversion error handling
 if num, err := node.Get("number").Int(); err != nil {
-    fmt.Printf("Number conversion failed: %v\n", err)
+fmt.Printf("Number conversion failed: %v\n", err)
 }
 
 // Successful type conversion
 if num, err := node.Get("valid_number").Int(); err == nil {
-    fmt.Printf("Valid number: %d\n", num)
+fmt.Printf("Valid number: %d\n", num)
 }
 
 // Check if field exists
 if node.HasKey("missing_field") {
-    fmt.Println("missing_field exists")
+fmt.Println("missing_field exists")
 } else {
-    fmt.Println("missing_field does not exist")
+fmt.Println("missing_field does not exist")
 }
 
 if node.HasKey("valid_number") {
-    fmt.Println("valid_number exists")
+fmt.Println("valid_number exists")
 }
 
 // Use default value
@@ -729,11 +1101,12 @@ fmt.Printf("Using default value: %s\n", defaultStr)
 // Handle empty string
 emptyStr, err := node.Get("empty_string").String()
 if err == nil {
-    fmt.Printf("Empty string length: %d\n", len(emptyStr))
+fmt.Printf("Empty string length: %d\n", len(emptyStr))
 }
 ```
 
 **Output:**
+
 ```
 Number conversion failed: node is not a number type (got type="string")
 Valid number: 42
@@ -764,11 +1137,11 @@ node := fxjson.FromBytes(data)
 fmt.Println("=== Company Info (ToMap) ===")
 companyMap := node.Get("company").ToMap()
 for key, value := range companyMap {
-    if key == "employees" {
-        fmt.Printf("%s: [array, length=%d]\n", key, value.Len())
-    } else {
-        fmt.Printf("%s: %s\n", key, string(value.Raw()))
-    }
+if key == "employees" {
+fmt.Printf("%s: [array, length=%d]\n", key, value.Len())
+} else {
+fmt.Printf("%s: %s\n", key, string(value.Raw()))
+}
 }
 
 // Convert to Slice
@@ -776,10 +1149,10 @@ fmt.Println("\n=== Employee List (ToSlice) ===")
 employees := node.GetPath("company.employees").ToSlice()
 fmt.Printf("Total employees: %d\n", len(employees))
 for i, employee := range employees {
-    name, _ := employee.Get("name").String()
-    dept, _ := employee.Get("department").String()
-    salary, _ := employee.Get("salary").Int()
-    fmt.Printf("Employee %d: %s - %s dept (salary: %d)\n", i+1, name, dept, salary)
+name, _ := employee.Get("name").String()
+dept, _ := employee.Get("department").String()
+salary, _ := employee.Get("salary").Int()
+fmt.Printf("Employee %d: %s - %s dept (salary: %d)\n", i+1, name, dept, salary)
 }
 
 // Get all keys
@@ -792,12 +1165,13 @@ fmt.Println("\n=== Employee Nodes (GetAllValues) ===")
 employeeNodes := node.GetPath("company.employees").GetAllValues()
 fmt.Printf("Employee node count: %d\n", len(employeeNodes))
 for i, empNode := range employeeNodes {
-    name, _ := empNode.Get("name").String()
-    fmt.Printf("Node %d: %s's info\n", i+1, name)
+name, _ := empNode.Get("name").String()
+fmt.Printf("Node %d: %s's info\n", i+1, name)
 }
 ```
 
 **Output:**
+
 ```
 === Company Info (ToMap) ===
 name: "Tech Company"
@@ -827,11 +1201,11 @@ Node 3: Bob's info
 3. **Memory Management**: Core traversal operations achieve zero allocations, suitable for high-frequency scenarios
 4. **Type Checking**: Use `IsXXX()` methods for type checking to avoid unnecessary type conversions
 5. **Cache Utilization**: Array indices are automatically cached for better performance on repeated access
-6. **Decode Optimization**: 
-   - Use `node.Decode()` when you need Node functionality
-   - Use `DecodeStruct()` for direct struct decoding (faster)
-   - Use `DecodeStructFast()` for performance-critical scenarios (fastest)
-   - Choose the right method based on your performance requirements
+6. **Decode Optimization**:
+    - Use `node.Decode()` when you need Node functionality
+    - Use `DecodeStruct()` for direct struct decoding (faster)
+    - Use `DecodeStructFast()` for performance-critical scenarios (fastest)
+    - Choose the right method based on your performance requirements
 
 ## ⚠️ Notes
 
@@ -846,14 +1220,17 @@ Node 3: Bob's info
 ### Core Methods
 
 #### Node Creation
+
 - `FromBytes(data []byte) Node` - Create node from JSON bytes with automatic nested JSON expansion
 
 #### Basic Access
+
 - `Get(key string) Node` - Get object field by key
 - `GetPath(path string) Node` - Get value by path (e.g., "user.profile.name")
 - `Index(i int) Node` - Get array element by index
 
 #### Type Checking
+
 - `Exists() bool` - Check if node exists
 - `IsObject() bool` - Check if node is JSON object
 - `IsArray() bool` - Check if node is JSON array
@@ -867,6 +1244,7 @@ Node 3: Bob's info
 - `Type() byte` - Get internal type byte
 
 #### Value Extraction
+
 - `String() (string, error)` - Get string value
 - `Int() (int64, error)` - Get integer value
 - `Uint() (uint64, error)` - Get unsigned integer value
@@ -879,6 +1257,7 @@ Node 3: Bob's info
 - `Json() (string, error)` - Get JSON representation (objects/arrays only)
 
 #### Size and Keys
+
 - `Len() int` - Get length (array elements, object fields, string characters)
 - `Keys() [][]byte` - Get object keys as byte slices
 - `GetAllKeys() []string` - Get object keys as strings
@@ -887,17 +1266,20 @@ Node 3: Bob's info
 - `ToSlice() []Node` - Convert array to slice
 
 #### High-Performance Traversal
+
 - `ForEach(fn ForEachFunc) bool` - Traverse object with zero allocations (20x faster)
 - `ArrayForEach(fn ArrayForEachFunc) bool` - Traverse array with zero allocations (67x faster)
 - `Walk(fn WalkFunc) bool` - Deep traversal of entire JSON tree (2x faster)
 
 #### Search and Filter
+
 - `FindInObject(predicate func(key string, value Node) bool) (string, Node, bool)` - Find first matching object field
 - `FindInArray(predicate func(index int, value Node) bool) (int, Node, bool)` - Find first matching array element
 - `FilterArray(predicate func(index int, value Node) bool) []Node` - Filter array elements
 - `FindByPath(path string) Node` - Alias for GetPath
 
 #### Conditional Operations
+
 - `HasKey(key string) bool` - Check if object has key
 - `GetKeyValue(key string, defaultValue Node) Node` - Get value with default fallback
 - `CountIf(predicate func(index int, value Node) bool) int` - Count matching array elements
@@ -905,34 +1287,123 @@ Node 3: Bob's info
 - `AnyMatch(predicate func(index int, value Node) bool) bool` - Check if any array element matches
 
 #### Decoding
+
 - `Decode(v any) error` - Decode JSON into Go struct/type (optimized)
 - `DecodeStruct(data []byte, v any) error` - Direct struct decoding from bytes
 - `DecodeStructFast(data []byte, v any) error` - Ultra-fast struct decoding
+
+#### Default Value Functions
+
+- `StringOr(defaultValue string) string` - Get string value, return default on failure
+- `IntOr(defaultValue int64) int64` - Get integer value, return default on failure
+- `FloatOr(defaultValue float64) float64` - Get float value, return default on failure
+- `BoolOr(defaultValue bool) bool` - Get boolean value, return default on failure
+- `UintOr(defaultValue uint64) uint64` - Get unsigned integer value, return default on failure
+
+#### Batch Operations
+
+- `GetMultiple(paths ...string) []Node` - Get multiple path values simultaneously
+- `HasAnyPath(paths ...string) bool` - Check if any path exists
+- `HasAllPaths(paths ...string) bool` - Check if all paths exist
+
+#### Data Conversion Tools
+
+- `ToStringSlice() ([]string, error)` - Convert array to string slice
+- `ToIntSlice() ([]int64, error)` - Convert array to integer slice
+- `ToFloatSlice() ([]float64, error)` - Convert array to float slice
+- `ToBoolSlice() ([]bool, error)` - Convert array to boolean slice
+
+#### Data Validation Tools
+
+- `IsValidEmail() bool` - Check if string is valid email address
+- `IsValidURL() bool` - Check if string is valid URL
+- `IsValidPhone() bool` - Check if string is valid phone number (E.164 format)
+- `IsValidUUID() bool` - Check if string is valid UUID
+- `IsValidIPv4() bool` - Check if string is valid IPv4 address
+- `IsValidIPv6() bool` - Check if string is valid IPv6 address
+- `IsValidIP() bool` - Check if string is valid IP address (IPv4 or IPv6)
+
+#### String Operations
+
+- `Contains(substr string) bool` - Check if string contains substring
+- `StartsWith(prefix string) bool` - Check if string starts with prefix
+- `EndsWith(suffix string) bool` - Check if string ends with suffix
+- `ToLower() (string, error)` - Convert to lowercase
+- `ToUpper() (string, error)` - Convert to uppercase
+- `Trim() (string, error)` - Trim whitespace from both ends
+
+#### Array Operations
+
+- `First() Node` - Get first element of array
+- `Last() Node` - Get last element of array
+- `Slice(start, end int) []Node` - Get slice of array
+- `Reverse() []Node` - Return reversed array nodes
+
+#### Object Operations
+
+- `Merge(other Node) map[string]Node` - Merge two object nodes
+- `Pick(keys ...string) map[string]Node` - Pick specified keys from object
+- `Omit(keys ...string) map[string]Node` - Omit specified keys from object
+
+#### Comparison and Validation
+
+- `Equals(other Node) bool` - Check if two nodes are equal
+- `IsEmpty() bool` - Check if node is empty
+- `IsPositive() bool` - Check if number is positive
+- `IsNegative() bool` - Check if number is negative
+- `IsZero() bool` - Check if number is zero
+- `IsInteger() bool` - Check if number is integer
+- `InRange(min, max float64) bool` - Check if number is in range
+
+#### Error Handling
+
+- `FxJSONError` - Enhanced error type with type, message, context, and position info
+- `ErrorType` - Error type enumeration (InvalidJSON, OutOfBounds, TypeMismatch, etc.)
+- `NewContextError()` - Create error with context
+- `NewTypeMismatchError()` - Create type mismatch error
+- `NewNotFoundError()` - Create not found error
+- `NewValidationError()` - Create validation error
+
+#### Cache Management
+
+- `NewMemoryCache(maxSize int)` - Create memory cache
+- `EnableCaching(cache Cache)` - Enable caching
+- `DisableCaching()` - Disable caching
+- `FromBytesWithCache(data []byte, ttl time.Duration) Node` - Parse with caching
+
+#### Debug Tools
+
+- `EnableDebugMode()` - Enable debug mode
+- `DisableDebugMode()` - Disable debug mode
+- `FromBytesWithDebug(data []byte) (Node, DebugInfo)` - Parse with debug info
+- `PrettyPrint() string` - Pretty print JSON
+- `Inspect() map[string]interface{}` - Inspect JSON structure
+- `Diff(other Node) []DiffItem` - Compare two JSON nodes
 
 ### Callback Function Types
 
 ```go
 // Object traversal callback
-type ForEachFunc func(key string, value Node) bool
+type ForEachFunc func (key string, value Node) bool
 
 // Array traversal callback  
-type ArrayForEachFunc func(index int, value Node) bool
+type ArrayForEachFunc func (index int, value Node) bool
 
 // Deep traversal callback
-type WalkFunc func(path string, node Node) bool
+type WalkFunc func (path string, node Node) bool
 ```
 
 ### Node Types
 
 ```go
 const (
-    TypeInvalid NodeType = 0
-    TypeObject  NodeType = 'o'
-    TypeArray   NodeType = 'a' 
-    TypeString  NodeType = 's'
-    TypeNumber  NodeType = 'n'
-    TypeBool    NodeType = 'b'
-    TypeNull    NodeType = 'l'
+TypeInvalid NodeType = 0
+TypeObject  NodeType = 'o'
+TypeArray   NodeType = 'a'
+TypeString  NodeType = 's'
+TypeNumber  NodeType = 'n'
+TypeBool    NodeType = 'b'
+TypeNull    NodeType = 'l'
 )
 ```
 
@@ -964,23 +1435,24 @@ notesList := node.Get("notes")
 
 // Complex query with multiple conditions
 results, err := notesList.Query().
-    Where("views", ">", 1000).
-    Where("category", "!=", "food").
-    SortBy("views", "desc").
-    Limit(10).
-    ToSlice()
+Where("views", ">", 1000).
+Where("category", "!=", "food").
+SortBy("views", "desc").
+Limit(10).
+ToSlice()
 
 if err == nil {
-    fmt.Printf("Found %d high-view notes\n", len(results))
-    for _, note := range results {
-        title, _ := note.Get("title").String()
-        views, _ := note.Get("views").Int()
-        fmt.Printf("- %s (%d views)\n", title, views)
-    }
+fmt.Printf("Found %d high-view notes\n", len(results))
+for _, note := range results {
+title, _ := note.Get("title").String()
+views, _ := note.Get("views").Int()
+fmt.Printf("- %s (%d views)\n", title, views)
+}
 }
 ```
 
 **Output:**
+
 ```
 Found 2 high-view notes
 - Travel Guide (2100 views)
@@ -992,25 +1464,26 @@ Found 2 high-view notes
 ```go
 // Group by category and calculate statistics
 stats, err := notesList.Aggregate().
-    GroupBy("category").
-    Count("total_notes").
-    Sum("views", "total_views").
-    Avg("views", "avg_views").
-    Max("views", "max_views").
-    Execute(notesList)
+GroupBy("category").
+Count("total_notes").
+Sum("views", "total_views").
+Avg("views", "avg_views").
+Max("views", "max_views").
+Execute(notesList)
 
 if err == nil {
-    fmt.Println("Statistics by Category:")
-    for category, data := range stats {
-        statsMap := data.(map[string]interface{})
-        fmt.Printf("📁 %s: %d notes, %.0f total views, %.1f avg views\n",
-            category, int(statsMap["total_notes"].(float64)),
-            statsMap["total_views"], statsMap["avg_views"])
-    }
+fmt.Println("Statistics by Category:")
+for category, data := range stats {
+statsMap := data.(map[string]interface{})
+fmt.Printf("📁 %s: %d notes, %.0f total views, %.1f avg views\n",
+category, int(statsMap["total_notes"].(float64)),
+statsMap["total_views"], statsMap["avg_views"])
+}
 }
 ```
 
 **Output:**
+
 ```
 Statistics by Category:
 📁 tech: 1 notes, 1250 total views, 1250.0 avg views
@@ -1023,30 +1496,31 @@ Statistics by Category:
 ```go
 // Transform data structure with field mapping
 mapper := fxjson.FieldMapper{
-    Rules: map[string]string{
-        "notes[0].title": "post_title",
-        "notes[0].views": "view_count",
-        "notes[0].category": "post_category",
-    },
-    DefaultValues: map[string]interface{}{
-        "status": "published",
-        "created_by": "system",
-    },
-    TypeCast: map[string]string{
-        "view_count": "int",
-    },
+Rules: map[string]string{
+"notes[0].title": "post_title",
+"notes[0].views": "view_count",
+"notes[0].category": "post_category",
+},
+DefaultValues: map[string]interface{}{
+"status": "published",
+"created_by": "system",
+},
+TypeCast: map[string]string{
+"view_count": "int",
+},
 }
 
 result, err := node.Transform(mapper)
 if err == nil {
-    fmt.Println("Transformed data:")
-    for key, value := range result {
-        fmt.Printf("  %s: %v\n", key, value)
-    }
+fmt.Println("Transformed data:")
+for key, value := range result {
+fmt.Printf("  %s: %v\n", key, value)
+}
 }
 ```
 
 **Output:**
+
 ```
 Transformed data:
   post_title: Go Tutorial
@@ -1075,16 +1549,126 @@ secondTime := time.Since(start)
 
 stats := cache.Stats()
 fmt.Printf("First parse: %v\n", firstTime)
-fmt.Printf("Cached parse: %v (%.1fx faster)\n", 
-    secondTime, float64(firstTime)/float64(secondTime))
+fmt.Printf("Cached parse: %v (%.1fx faster)\n",
+secondTime, float64(firstTime)/float64(secondTime))
 fmt.Printf("Cache hit rate: %.1f%%\n", stats.HitRate*100)
 ```
 
 **Output:**
+
 ```
 First parse: 45.2µs
 Cached parse: 4.8µs (9.4x faster)
 Cache hit rate: 50.0%
+```
+
+### Using Default Value Functions
+
+```go
+jsonData := []byte(`{
+    "name": "Alice",
+    "age": 30,
+    "optional_field": null
+}`)
+
+node := FromBytes(jsonData)
+
+// Use default value functions to avoid error handling
+name := node.Get("name").StringOr("Unknown") // Returns "Alice"
+nickname := node.Get("nickname").StringOr("No nickname") // Returns "No nickname"
+age := node.Get("age").IntOr(0) // Returns 30
+score := node.Get("score").FloatOr(0.0)                // Returns 0.0
+active := node.Get("active").BoolOr(true) // Returns true
+
+fmt.Printf("Name: %s, Age: %d\n", name, age)
+```
+
+### Batch Operations and Validation
+
+```go
+jsonData := []byte(`{
+    "user": {
+        "email": "test@example.com",
+        "phone": "+1234567890",
+        "ip": "192.168.1.1",
+        "website": "https://example.com"
+    }
+}`)
+
+node := FromBytes(jsonData)
+user := node.Get("user")
+
+// Batch get multiple values
+values := user.GetMultiple("email", "phone", "ip", "website")
+
+// Data validation
+if user.Get("email").IsValidEmail() {
+fmt.Println("Valid email address")
+}
+
+if user.Get("ip").IsValidIPv4() {
+fmt.Println("Valid IPv4 address")
+}
+
+if user.Get("website").IsValidURL() {
+fmt.Println("Valid URL")
+}
+
+// Check multiple paths
+if node.HasAllPaths("user.email", "user.phone") {
+fmt.Println("All required fields exist")
+}
+```
+
+### Array and Object Operations
+
+```go
+jsonData := []byte(`{
+    "items": [1, 2, 3, 4, 5],
+    "config": {"a": 1, "b": 2, "c": 3}
+}`)
+
+node := FromBytes(jsonData)
+
+// Array operations
+items := node.Get("items")
+first := items.First() // Get first element
+last := items.Last()   // Get last element
+sliced := items.Slice(1, 4)         // Get slice [2, 3, 4]
+reversed := items.Reverse()         // Reverse array
+
+// Convert to typed slice
+if intSlice, err := items.ToIntSlice(); err == nil {
+fmt.Printf("Sum: %d\n", sum(intSlice))
+}
+
+// Object operations
+config := node.Get("config")
+picked := config.Pick("a", "c")     // Keep only a and c
+omitted := config.Omit("b")         // Exclude b
+
+// Merge objects
+other := FromBytes([]byte(`{"d": 4, "e": 5}`))
+merged := config.Merge(other) // Merge two objects
+```
+
+### Enhanced Error Handling
+
+```go
+jsonData := []byte(`{"value": "not_a_number"}`)
+node := FromBytes(jsonData)
+
+// Use enhanced error handling
+if _, err := node.Get("value").Int(); err != nil {
+if fxErr, ok := err.(*FxJSONError); ok {
+fmt.Printf("Error Type: %s\n", fxErr.Type)
+fmt.Printf("Error Message: %s\n", fxErr.Message)
+fmt.Printf("Error Context: %s\n", fxErr.Context)
+}
+}
+
+// Use default values to avoid errors
+value := node.Get("value").IntOr(42) // Returns default value 42
 ```
 
 ### Data Validation
@@ -1092,20 +1676,20 @@ Cache hit rate: 50.0%
 ```go
 // Define validation rules
 validator := &fxjson.DataValidator{
-    Rules: map[string]fxjson.ValidationRule{
-        "title": {
-            Required:  true,
-            Type:      "string",
-            MinLength: 1,
-            MaxLength: 100,
-        },
-        "views": {
-            Required: true,
-            Type:     "number",
-            Min:      0,
-            Max:      1000000,
-        },
-    },
+Rules: map[string]fxjson.ValidationRule{
+"title": {
+Required:  true,
+Type:      "string",
+MinLength: 1,
+MaxLength: 100,
+},
+"views": {
+Required: true,
+Type:     "number",
+Min:      0,
+Max:      1000000,
+},
+},
 }
 
 // Validate first note
@@ -1113,13 +1697,13 @@ firstNote := notesList.Index(0)
 result, errors := firstNote.Validate(validator)
 
 if len(errors) == 0 {
-    fmt.Println("✅ Validation passed")
-    fmt.Printf("Validated fields: %d\n", len(result))
+fmt.Println("✅ Validation passed")
+fmt.Printf("Validated fields: %d\n", len(result))
 } else {
-    fmt.Println("❌ Validation failed:")
-    for _, err := range errors {
-        fmt.Printf("  - %s\n", err)
-    }
+fmt.Println("❌ Validation failed:")
+for _, err := range errors {
+fmt.Printf("  - %s\n", err)
+}
 }
 ```
 
@@ -1151,6 +1735,7 @@ fmt.Printf("  Key count: %v\n", inspection["key_count"])
 ```
 
 **Output:**
+
 ```
 📊 Debug Information:
   Parse time: 125.4µs
@@ -1182,33 +1767,34 @@ fmt.Printf("  Key count: %v\n", inspection["key_count"])
 // Stream processing for large datasets
 processedCount := 0
 err := notesList.Stream(func(note fxjson.Node, index int) bool {
-    title, _ := note.Get("title").String()
-    views, _ := note.Get("views").Int()
-    
-    fmt.Printf("Processing note %d: %s (%d views)\n", index+1, title, views)
-    processedCount++
-    
-    // Return false to stop early if needed
-    return true
+title, _ := note.Get("title").String()
+views, _ := note.Get("views").Int()
+
+fmt.Printf("Processing note %d: %s (%d views)\n", index+1, title, views)
+processedCount++
+
+// Return false to stop early if needed
+return true
 })
 
 fmt.Printf("Processed %d notes via streaming\n", processedCount)
 
 // Batch processing with custom batch size
 batchProcessor := fxjson.NewBatchProcessor(2, func(nodes []fxjson.Node) error {
-    fmt.Printf("Processing batch of %d nodes\n", len(nodes))
-    // Process batch...
-    return nil
+fmt.Printf("Processing batch of %d nodes\n", len(nodes))
+// Process batch...
+return nil
 })
 
-notesList.ArrayForEach(func(index int, note fxjson.Node) bool {
-    batchProcessor.Add(note)
-    return true
+notesList.ArrayForEach(func (index int, note fxjson.Node) bool {
+batchProcessor.Add(note)
+return true
 })
 batchProcessor.Flush()
 ```
 
 **Output:**
+
 ```
 Processing note 1: Go Tutorial (1250 views)
 Processing note 2: Cooking Tips (890 views)
@@ -1221,26 +1807,31 @@ Processing batch of 1 nodes
 ## 🎯 Use Cases
 
 ### 1. **Configuration Management**
+
 - Complex configuration parsing with validation
 - Environment-specific configuration merging
 - Real-time configuration updates with caching
 
 ### 2. **API Response Processing**
+
 - High-throughput API response parsing
 - Data transformation for different API versions
 - Response filtering and aggregation
 
 ### 3. **Data Analytics**
+
 - Large dataset analysis and aggregation
 - Real-time metrics calculation
 - Data quality validation and sanitization
 
 ### 4. **Content Management**
+
 - Document structure analysis
 - Content transformation and migration
 - Search and filtering operations
 
 ### 5. **Log Processing**
+
 - Structured log parsing and analysis
 - Log aggregation and statistics
 - Performance monitoring and debugging

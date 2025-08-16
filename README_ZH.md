@@ -147,6 +147,360 @@ fmt.Printf("第二个用户: %s\n", secondName)
 第二个用户: Bob
 ```
 
+## 🆕 实用功能示例
+
+### 默认值函数 - 优雅的错误处理
+
+```go
+// 传统方式（需要错误处理）
+name, err := node.Get("name").String()
+if err != nil {
+    name = "默认名称"
+}
+
+// 使用默认值函数（简洁优雅）
+name := node.Get("name").StringOr("默认名称")
+age := node.Get("age").IntOr(18)
+score := node.Get("score").FloatOr(0.0)
+active := node.Get("active").BoolOr(true)
+
+// 实际应用示例：解析用户配置
+configJSON := []byte(`{
+    "timeout": 30,
+    "retries": null,
+    "debug": false
+}`)
+
+config := fxjson.FromBytes(configJSON)
+timeout := config.Get("timeout").IntOr(60)        // 返回 30
+retries := config.Get("retries").IntOr(3)         // 返回 3（默认值）
+debug := config.Get("debug").BoolOr(false)        // 返回 false
+maxSize := config.Get("maxSize").IntOr(1024)      // 返回 1024（默认值）
+```
+
+### 数据验证工具 - 内置常用验证
+
+```go
+userJSON := []byte(`{
+    "email": "user@example.com",
+    "phone": "+86138001380000",
+    "website": "https://example.com",
+    "ip": "192.168.1.100",
+    "ipv6": "2001:db8::1",
+    "uuid": "550e8400-e29b-41d4-a716-446655440000"
+}`)
+
+user := fxjson.FromBytes(userJSON)
+
+// 邮箱验证
+if user.Get("email").IsValidEmail() {
+    fmt.Println("✅ 邮箱格式正确")
+}
+
+// URL验证
+if user.Get("website").IsValidURL() {
+    fmt.Println("✅ 网址格式正确")
+}
+
+// IP地址验证
+if user.Get("ip").IsValidIPv4() {
+    fmt.Println("✅ IPv4地址有效")
+}
+if user.Get("ipv6").IsValidIPv6() {
+    fmt.Println("✅ IPv6地址有效")
+}
+
+// UUID验证
+if user.Get("uuid").IsValidUUID() {
+    fmt.Println("✅ UUID格式正确")
+}
+
+// 电话号码验证（E.164格式）
+if user.Get("phone").IsValidPhone() {
+    fmt.Println("✅ 电话号码格式正确")
+}
+```
+
+### 批量操作 - 高效处理多个字段
+
+```go
+// 批量获取多个路径的值
+orderJSON := []byte(`{
+    "order": {
+        "id": "ORD-12345",
+        "customer": {
+            "name": "张三",
+            "email": "zhangsan@example.com",
+            "phone": "+86138001380000"
+        },
+        "items": [
+            {"name": "商品A", "price": 99.9},
+            {"name": "商品B", "price": 199.9}
+        ],
+        "total": 299.8
+    }
+}`)
+
+order := fxjson.FromBytes(orderJSON)
+
+// 一次性获取多个路径
+values := order.GetMultiple(
+    "order.id",
+    "order.customer.name",
+    "order.customer.email",
+    "order.total",
+)
+
+orderId := values[0].StringOr("")
+customerName := values[1].StringOr("")
+customerEmail := values[2].StringOr("")
+total := values[3].FloatOr(0.0)
+
+// 检查必需字段是否都存在
+requiredFields := []string{
+    "order.id",
+    "order.customer.name",
+    "order.customer.email",
+    "order.items",
+}
+
+if order.HasAllPaths(requiredFields...) {
+    fmt.Println("✅ 所有必需字段都存在")
+}
+
+// 检查是否存在任意一个联系方式
+contactFields := []string{
+    "order.customer.email",
+    "order.customer.phone",
+    "order.customer.wechat",
+}
+
+if order.HasAnyPath(contactFields...) {
+    fmt.Println("✅ 至少有一个联系方式")
+}
+```
+
+### 数组和对象操作 - 便捷的数据处理
+
+```go
+// 数组操作示例
+scoresJSON := []byte(`{
+    "scores": [85, 92, 78, 95, 88, 91],
+    "names": ["Alice", "Bob", "Charlie", "David"]
+}`)
+
+data := fxjson.FromBytes(scoresJSON)
+scores := data.Get("scores")
+names := data.Get("names")
+
+// 数组便捷操作
+first := scores.First()           // 获取第一个: 85
+last := scores.Last()             // 获取最后一个: 91
+top3 := scores.Slice(0, 3)       // 获取前3个: [85, 92, 78]
+reversed := scores.Reverse()      // 反转数组: [91, 88, 95, 78, 92, 85]
+
+// 转换为Go切片进行计算
+if scoreSlice, err := scores.ToIntSlice(); err == nil {
+    sum := int64(0)
+    for _, s := range scoreSlice {
+        sum += s
+    }
+    avg := float64(sum) / float64(len(scoreSlice))
+    fmt.Printf("平均分: %.2f\n", avg)
+}
+
+// 对象操作示例
+configJSON := []byte(`{
+    "database": {"host": "localhost", "port": 3306, "user": "root"},
+    "cache": {"host": "127.0.0.1", "port": 6379}
+}`)
+
+config := fxjson.FromBytes(configJSON)
+dbConfig := config.Get("database")
+cacheConfig := config.Get("cache")
+
+// 选择特定字段
+essentials := dbConfig.Pick("host", "port")  // 只保留 host 和 port
+safeConfig := dbConfig.Omit("user")          // 排除敏感信息
+
+// 合并配置
+defaultsJSON := []byte(`{"timeout": 30, "maxRetries": 3}`)
+defaults := fxjson.FromBytes(defaultsJSON)
+merged := dbConfig.Merge(defaults)           // 合并默认配置
+```
+
+### 字符串操作 - 内置常用字符串处理
+
+```go
+textJSON := []byte(`{
+    "title": "  Hello World  ",
+    "description": "This is a SAMPLE text",
+    "url": "https://example.com/api",
+    "filename": "document.pdf"
+}`)
+
+doc := fxjson.FromBytes(textJSON)
+
+// 字符串操作
+title := doc.Get("title")
+trimmed, _ := title.Trim()                    // "Hello World"
+lower, _ := title.ToLower()                   // "  hello world  "
+upper, _ := title.ToUpper()                   // "  HELLO WORLD  "
+
+// 字符串检查
+url := doc.Get("url")
+if url.Contains("example.com") {
+    fmt.Println("URL包含example.com")
+}
+if url.StartsWith("https://") {
+    fmt.Println("使用HTTPS协议")
+}
+
+filename := doc.Get("filename")
+if filename.EndsWith(".pdf") {
+    fmt.Println("这是PDF文件")
+}
+```
+
+### 比较和验证 - 数据状态检查
+
+```go
+dataJSON := []byte(`{
+    "count": 0,
+    "price": 19.99,
+    "discount": -5.0,
+    "quantity": 10,
+    "items": [],
+    "description": "",
+    "metadata": null
+}`)
+
+node := fxjson.FromBytes(dataJSON)
+
+// 数字验证
+count := node.Get("count")
+if count.IsZero() {
+    fmt.Println("计数为零")
+}
+
+price := node.Get("price")
+if price.IsPositive() {
+    fmt.Println("价格为正数")
+}
+
+discount := node.Get("discount")
+if discount.IsNegative() {
+    fmt.Println("折扣为负数（表示减免）")
+}
+
+quantity := node.Get("quantity")
+if quantity.IsInteger() && quantity.InRange(1, 100) {
+    fmt.Println("数量在有效范围内")
+}
+
+// 空值检查
+if node.Get("items").IsEmpty() {
+    fmt.Println("items数组为空")
+}
+if node.Get("description").IsEmpty() {
+    fmt.Println("description为空字符串")
+}
+if node.Get("metadata").IsEmpty() {
+    fmt.Println("metadata为null")
+}
+
+// 节点比较
+node1 := fxjson.FromBytes([]byte(`{"a": 1, "b": 2}`))
+node2 := fxjson.FromBytes([]byte(`{"a": 1, "b": 2}`))
+if node1.Equals(node2) {
+    fmt.Println("两个JSON节点相等")
+}
+```
+
+### 类型转换工具 - 批量数据转换
+
+```go
+// 将JSON数组转换为Go切片
+dataJSON := []byte(`{
+    "tags": ["golang", "json", "performance"],
+    "scores": [95, 87, 92, 88],
+    "prices": [19.99, 29.99, 39.99],
+    "flags": [true, false, true]
+}`)
+
+data := fxjson.FromBytes(dataJSON)
+
+// 转换为字符串切片
+if tags, err := data.Get("tags").ToStringSlice(); err == nil {
+    fmt.Printf("标签: %v\n", tags)
+    // 可以直接使用Go的字符串切片功能
+    joined := strings.Join(tags, ", ")
+    fmt.Printf("标签列表: %s\n", joined)
+}
+
+// 转换为整数切片
+if scores, err := data.Get("scores").ToIntSlice(); err == nil {
+    // 计算总分
+    total := int64(0)
+    for _, score := range scores {
+        total += score
+    }
+    fmt.Printf("总分: %d\n", total)
+}
+
+// 转换为浮点数切片
+if prices, err := data.Get("prices").ToFloatSlice(); err == nil {
+    // 计算总价
+    sum := 0.0
+    for _, price := range prices {
+        sum += price
+    }
+    fmt.Printf("总价: %.2f\n", sum)
+}
+
+// 转换为布尔值切片
+if flags, err := data.Get("flags").ToBoolSlice(); err == nil {
+    // 统计true的数量
+    trueCount := 0
+    for _, flag := range flags {
+        if flag {
+            trueCount++
+        }
+    }
+    fmt.Printf("启用的功能: %d个\n", trueCount)
+}
+```
+
+### 增强错误处理 - 详细的错误信息
+
+```go
+// 使用增强的错误系统获取详细信息
+jsonData := []byte(`{"age": "twenty"}`)
+node := fxjson.FromBytes(jsonData)
+
+if _, err := node.Get("age").Int(); err != nil {
+    // 转换为FxJSONError获取详细信息
+    if fxErr, ok := err.(*fxjson.FxJSONError); ok {
+        fmt.Printf("错误类型: %s\n", fxErr.Type)
+        fmt.Printf("错误消息: %s\n", fxErr.Message)
+        fmt.Printf("错误位置: 行%d, 列%d\n", fxErr.Line, fxErr.Column)
+        fmt.Printf("上下文: %s\n", fxErr.Context)
+    }
+}
+
+// 创建自定义错误
+if !node.HasKey("required_field") {
+    err := fxjson.NewNotFoundError("required_field")
+    fmt.Printf("错误: %v\n", err)
+}
+
+// 验证错误
+if !node.Get("email").IsValidEmail() {
+    err := fxjson.NewValidationError("email", "invalid email format")
+    fmt.Printf("验证失败: %v\n", err)
+}
+```
+
 ## 🔍 高级功能
 
 ### SQL风格查询
@@ -286,6 +640,115 @@ fmt.Printf("缓存命中率: %.1f%%\n", stats.HitRate*100)
 首次解析: 45.2µs
 缓存解析: 4.8µs (快9.4倍)
 缓存命中率: 50.0%
+```
+
+### 使用默认值函数
+
+```go
+jsonData := []byte(`{
+    "name": "Alice",
+    "age": 30,
+    "optional_field": null
+}`)
+
+node := FromBytes(jsonData)
+
+// 使用默认值函数避免错误处理
+name := node.Get("name").StringOr("Unknown")           // 返回 "Alice"
+nickname := node.Get("nickname").StringOr("No nickname") // 返回 "No nickname"
+age := node.Get("age").IntOr(0)                        // 返回 30
+score := node.Get("score").FloatOr(0.0)                // 返回 0.0
+active := node.Get("active").BoolOr(true)              // 返回 true
+
+fmt.Printf("Name: %s, Age: %d\n", name, age)
+```
+
+### 批量操作和验证
+
+```go
+jsonData := []byte(`{
+    "user": {
+        "email": "test@example.com",
+        "phone": "+1234567890",
+        "ip": "192.168.1.1",
+        "website": "https://example.com"
+    }
+}`)
+
+node := FromBytes(jsonData)
+user := node.Get("user")
+
+// 批量获取多个值
+values := user.GetMultiple("email", "phone", "ip", "website")
+
+// 数据验证
+if user.Get("email").IsValidEmail() {
+    fmt.Println("Valid email address")
+}
+
+if user.Get("ip").IsValidIPv4() {
+    fmt.Println("Valid IPv4 address")
+}
+
+if user.Get("website").IsValidURL() {
+    fmt.Println("Valid URL")
+}
+
+// 检查多个路径
+if node.HasAllPaths("user.email", "user.phone") {
+    fmt.Println("All required fields exist")
+}
+```
+
+### 数组和对象操作
+
+```go
+jsonData := []byte(`{
+    "items": [1, 2, 3, 4, 5],
+    "config": {"a": 1, "b": 2, "c": 3}
+}`)
+
+node := FromBytes(jsonData)
+
+// 数组操作
+items := node.Get("items")
+first := items.First()              // 获取第一个元素
+last := items.Last()                 // 获取最后一个元素
+sliced := items.Slice(1, 4)         // 获取切片 [2, 3, 4]
+reversed := items.Reverse()         // 反转数组
+
+// 转换为类型切片
+if intSlice, err := items.ToIntSlice(); err == nil {
+    fmt.Printf("Sum: %d\n", sum(intSlice))
+}
+
+// 对象操作
+config := node.Get("config")
+picked := config.Pick("a", "c")     // 只保留 a 和 c
+omitted := config.Omit("b")         // 排除 b
+
+// 合并对象
+other := FromBytes([]byte(`{"d": 4, "e": 5}`))
+merged := config.Merge(other)       // 合并两个对象
+```
+
+### 增强的错误处理
+
+```go
+jsonData := []byte(`{"value": "not_a_number"}`)
+node := FromBytes(jsonData)
+
+// 使用增强的错误处理
+if _, err := node.Get("value").Int(); err != nil {
+    if fxErr, ok := err.(*FxJSONError); ok {
+        fmt.Printf("Error Type: %s\n", fxErr.Type)
+        fmt.Printf("Error Message: %s\n", fxErr.Message)
+        fmt.Printf("Error Context: %s\n", fxErr.Context)
+    }
+}
+
+// 使用默认值避免错误
+value := node.Get("value").IntOr(42) // 返回默认值 42
 ```
 
 ### 数据验证
@@ -876,6 +1339,69 @@ valid_number存在
 - `NewMemoryCache(maxSize int)` - 创建内存缓存
 - `EnableCaching(cache Cache)` - 启用缓存
 - `DisableCaching()` - 禁用缓存
+
+#### 默认值支持函数
+- `StringOr(defaultValue string) string` - 获取字符串值，失败返回默认值
+- `IntOr(defaultValue int64) int64` - 获取整数值，失败返回默认值
+- `FloatOr(defaultValue float64) float64` - 获取浮点数值，失败返回默认值
+- `BoolOr(defaultValue bool) bool` - 获取布尔值，失败返回默认值
+- `UintOr(defaultValue uint64) uint64` - 获取无符号整数值，失败返回默认值
+
+#### 批量操作函数
+- `GetMultiple(paths ...string) []Node` - 同时获取多个路径的值
+- `HasAnyPath(paths ...string) bool` - 检查是否存在任意路径
+- `HasAllPaths(paths ...string) bool` - 检查是否存在所有路径
+
+#### 数据转换工具
+- `ToStringSlice() ([]string, error)` - 将数组转换为字符串切片
+- `ToIntSlice() ([]int64, error)` - 将数组转换为整数切片
+- `ToFloatSlice() ([]float64, error)` - 将数组转换为浮点数切片
+- `ToBoolSlice() ([]bool, error)` - 将数组转换为布尔值切片
+
+#### 数据验证工具
+- `IsValidEmail() bool` - 检查是否为有效的电子邮件地址
+- `IsValidURL() bool` - 检查是否为有效的URL
+- `IsValidPhone() bool` - 检查是否为有效的电话号码（E.164格式）
+- `IsValidUUID() bool` - 检查是否为有效的UUID
+- `IsValidIPv4() bool` - 检查是否为有效的IPv4地址
+- `IsValidIPv6() bool` - 检查是否为有效的IPv6地址
+- `IsValidIP() bool` - 检查是否为有效的IP地址（IPv4或IPv6）
+
+#### 字符串操作工具
+- `Contains(substr string) bool` - 检查是否包含子串
+- `StartsWith(prefix string) bool` - 检查是否以指定前缀开始
+- `EndsWith(suffix string) bool` - 检查是否以指定后缀结束
+- `ToLower() (string, error)` - 转换为小写
+- `ToUpper() (string, error)` - 转换为大写
+- `Trim() (string, error)` - 去除两端空白字符
+
+#### 数组操作工具
+- `First() Node` - 获取数组的第一个元素
+- `Last() Node` - 获取数组的最后一个元素
+- `Slice(start, end int) []Node` - 获取数组的切片
+- `Reverse() []Node` - 返回反转后的数组节点
+
+#### 对象操作工具
+- `Merge(other Node) map[string]Node` - 合并两个对象节点
+- `Pick(keys ...string) map[string]Node` - 从对象中选择指定的键
+- `Omit(keys ...string) map[string]Node` - 从对象中排除指定的键
+
+#### 比较和验证函数
+- `Equals(other Node) bool` - 检查两个节点是否相等
+- `IsEmpty() bool` - 检查节点是否为空
+- `IsPositive() bool` - 检查数字是否为正数
+- `IsNegative() bool` - 检查数字是否为负数
+- `IsZero() bool` - 检查数字是否为零
+- `IsInteger() bool` - 检查数字是否为整数
+- `InRange(min, max float64) bool` - 检查数字是否在指定范围内
+
+#### 错误处理
+- `FxJSONError` - 增强的错误类型，包含类型、消息、上下文、位置信息
+- `ErrorType` - 错误类型枚举（InvalidJSON、OutOfBounds、TypeMismatch等）
+- `NewContextError()` - 创建带上下文的错误
+- `NewTypeMismatchError()` - 创建类型不匹配错误
+- `NewNotFoundError()` - 创建未找到错误
+- `NewValidationError()` - 创建验证错误
 
 #### 调试工具
 - `EnableDebugMode()` - 启用调试模式
