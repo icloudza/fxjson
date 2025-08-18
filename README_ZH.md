@@ -190,4 +190,4 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 | IntOr | 28.34 ns | 0 B | 0 allocs |
 | FloatOr | 40.89 ns | 0 B | 0 allocs |
 
-*基准测试结果基于 Apple M4 Pro，Go 1.23*
+*基准测试结果基于 Apple M4 Pro，Go 1.24.6*

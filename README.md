@@ -127,27 +127,27 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ### Core Operations Performance
 
-| Operation | FxJSON | Standard Library | Performance Gain | Memory Advantage |
-|-----------|--------|------------------|------------------|------------------|
-| Get | 24.88 ns | 2012 ns | **80.8x faster** | 0 vs 1984 B |
-| GetPath | 111.5 ns | 2055 ns | **18.4x faster** | 0 vs 1984 B |
-| Int Conversion | 16.70 ns | 2026 ns | **121.3x faster** | 0 vs 1984 B |
-| Float Conversion | 7.688 ns | 2051 ns | **266.7x faster** | 0 vs 1984 B |
-| Bool Conversion | 3.684 ns | 2149 ns | **583.2x faster** | 0 vs 1984 B |
-| String Access | 5.402 ns | 2083 ns | **385.6x faster** | 0 vs 1984 B |
-| Array Length | 20.70 ns | 2152 ns | **103.9x faster** | 0 vs 1984 B |
-| Array Index | 18.42 ns | 2134 ns | **115.9x faster** | 0 vs 1984 B |
-| Key Existence | 0.2454 ns | 2110 ns | **8598x faster** | 0 vs 1984 B |
+| Operation        | FxJSON    | Standard Library | Performance Gain  | Memory Advantage |
+|------------------|-----------|------------------|-------------------|------------------|
+| Get              | 24.88 ns  | 2012 ns          | **80.8x faster**  | 0 vs 1984 B      |
+| GetPath          | 111.5 ns  | 2055 ns          | **18.4x faster**  | 0 vs 1984 B      |
+| Int Conversion   | 16.70 ns  | 2026 ns          | **121.3x faster** | 0 vs 1984 B      |
+| Float Conversion | 7.688 ns  | 2051 ns          | **266.7x faster** | 0 vs 1984 B      |
+| Bool Conversion  | 3.684 ns  | 2149 ns          | **583.2x faster** | 0 vs 1984 B      |
+| String Access    | 5.402 ns  | 2083 ns          | **385.6x faster** | 0 vs 1984 B      |
+| Array Length     | 20.70 ns  | 2152 ns          | **103.9x faster** | 0 vs 1984 B      |
+| Array Index      | 18.42 ns  | 2134 ns          | **115.9x faster** | 0 vs 1984 B      |
+| Key Existence    | 0.2454 ns | 2110 ns          | **8598x faster**  | 0 vs 1984 B      |
 
 ### Traversal Operations
 
-| Operation | FxJSON | Standard Library | Performance Gain | Memory Advantage |
-|-----------|--------|------------------|------------------|------------------|
-| Object ForEach | 108.9 ns | 2142 ns | **19.7x faster** | 0 vs 1984 B |
-| Array ForEach | 30.21 ns | 2119 ns | **70.2x faster** | 0 vs 1984 B |
-| Deep Walk | 1536 ns | 2891 ns | **1.9x faster** | 3056 vs 2289 B |
-| Complex Traversal | 1310 ns | 3505 ns | **2.7x faster** | 0 vs 4136 B |
-| Large Data Traversal | 12.8 µs | 17.4 µs | **1.4x faster** | 19136 vs 14698 B |
+| Operation            | FxJSON   | Standard Library | Performance Gain | Memory Advantage |
+|----------------------|----------|------------------|------------------|------------------|
+| Object ForEach       | 108.9 ns | 2142 ns          | **19.7x faster** | 0 vs 1984 B      |
+| Array ForEach        | 30.21 ns | 2119 ns          | **70.2x faster** | 0 vs 1984 B      |
+| Deep Walk            | 1536 ns  | 2891 ns          | **1.9x faster**  | 3056 vs 2289 B   |
+| Complex Traversal    | 1310 ns  | 3505 ns          | **2.7x faster**  | 0 vs 4136 B      |
+| Large Data Traversal | 12.8 µs  | 17.4 µs          | **1.4x faster**  | 19136 vs 14698 B |
 
 ### Struct Operations
 
@@ -161,34 +161,34 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ### Advanced Features Performance
 
-| Feature | Operation Time | Memory Usage | Allocations | Note |
-|---------|----------------|--------------|-------------|------|
-| Basic Parsing | 5,290 ns | 6,448 B | 45 allocs | Standard JSON parsing |
-| **Cached Parsing** | **641.8 ns** | **20 B** | **2 allocs** | **8.2x faster, 99.7% less memory** |
-| Simple Query | 3,386 ns | 640 B | 14 allocs | Basic filtering |
-| Complex Query | 4,986 ns | 1,720 B | 52 allocs | Multi-condition with sort |
-| Data Aggregation | 4,804 ns | 2,640 B | 32 allocs | Statistical operations |
-| Data Transformation | 478.7 ns | 368 B | 5 allocs | Field mapping & conversion |
-| Data Validation | 216.6 ns | 360 B | 4 allocs | Rule-based validation |
-| Stream Processing | 3,250 ns | 0 B | 0 allocs | Zero-allocation streaming |
-| Large Data Query | 1.28 ms | 80 B | 2 allocs | 100 records processing |
-| JSON Diff | 18.2 µs | 2,787 B | 197 allocs | Change detection |
-| Empty String Handling | 2,777 ns | 1,664 B | 27 allocs | Safe empty string processing |
+| Feature               | Operation Time | Memory Usage | Allocations  | Note                               |
+|-----------------------|----------------|--------------|--------------|------------------------------------|
+| Basic Parsing         | 5,290 ns       | 6,448 B      | 45 allocs    | Standard JSON parsing              |
+| **Cached Parsing**    | **641.8 ns**   | **20 B**     | **2 allocs** | **8.2x faster, 99.7% less memory** |
+| Simple Query          | 3,386 ns       | 640 B        | 14 allocs    | Basic filtering                    |
+| Complex Query         | 4,986 ns       | 1,720 B      | 52 allocs    | Multi-condition with sort          |
+| Data Aggregation      | 4,804 ns       | 2,640 B      | 32 allocs    | Statistical operations             |
+| Data Transformation   | 478.7 ns       | 368 B        | 5 allocs     | Field mapping & conversion         |
+| Data Validation       | 216.6 ns       | 360 B        | 4 allocs     | Rule-based validation              |
+| Stream Processing     | 3,250 ns       | 0 B          | 0 allocs     | Zero-allocation streaming          |
+| Large Data Query      | 1.28 ms        | 80 B         | 2 allocs     | 100 records processing             |
+| JSON Diff             | 18.2 µs        | 2,787 B      | 197 allocs   | Change detection                   |
+| Empty String Handling | 2,777 ns       | 1,664 B      | 27 allocs    | Safe empty string processing       |
 
 ### Serialization Performance
 
-| Operation | Time | Memory | Allocations | Note |
-|-----------|------|--------|-------------|------|
-| Marshal | 652.1 ns | 424 B | 9 allocs | Standard serialization |
-| FastMarshal | 226.7 ns | 136 B | 2 allocs | High-performance serialization |
-| StructMarshal | 267.1 ns | 136 B | 2 allocs | Direct struct serialization |
+| Operation     | Time     | Memory | Allocations | Note                           |
+|---------------|----------|--------|-------------|--------------------------------|
+| Marshal       | 652.1 ns | 424 B  | 9 allocs    | Standard serialization         |
+| FastMarshal   | 226.7 ns | 136 B  | 2 allocs    | High-performance serialization |
+| StructMarshal | 267.1 ns | 136 B  | 2 allocs    | Direct struct serialization    |
 
 ### Default Value Functions
 
-| Function | Time | Memory | Allocations |
-|----------|------|--------|-------------|
-| StringOr | 23.56 ns | 0 B | 0 allocs |
-| IntOr | 28.34 ns | 0 B | 0 allocs |
-| FloatOr | 40.89 ns | 0 B | 0 allocs |
+| Function | Time     | Memory | Allocations |
+|----------|----------|--------|-------------|
+| StringOr | 23.56 ns | 0 B    | 0 allocs    |
+| IntOr    | 28.34 ns | 0 B    | 0 allocs    |
+| FloatOr  | 40.89 ns | 0 B    | 0 allocs    |
 
-*Benchmark results on Apple M4 Pro, Go 1.23*
+*Benchmark results on Apple M4 Pro, Go 1.24.6*
