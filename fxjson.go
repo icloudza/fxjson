@@ -1507,6 +1507,339 @@ func (n Node) Json() (string, error) {
 	return unsafe.String(&data[n.start], n.end-n.start), nil
 }
 
+// ToJSON 将节点序列化为JSON字符串（压缩模式）
+func (n Node) ToJSON() (string, error) {
+	return n.ToJSONWithOptions(DefaultSerializeOptions)
+}
+
+// ToJSONIndent 将节点序列化为格式化的JSON字符串
+func (n Node) ToJSONIndent(prefix, indent string) (string, error) {
+	opts := PrettySerializeOptions
+	opts.Indent = indent
+	return n.ToJSONWithOptions(opts)
+}
+
+// ToJSONWithOptions 使用指定选项将节点序列化为JSON字符串
+func (n Node) ToJSONWithOptions(opts SerializeOptions) (string, error) {
+	if !n.Exists() {
+		return "null", nil
+	}
+
+	buf := getBuffer()
+	defer putBuffer(buf)
+
+	if err := n.marshalNode(buf, opts, 0); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
+// ToJSONBytes 将节点序列化为JSON字节切片（压缩模式）
+func (n Node) ToJSONBytes() ([]byte, error) {
+	return n.ToJSONBytesWithOptions(DefaultSerializeOptions)
+}
+
+// ToJSONBytesWithOptions 使用指定选项将节点序列化为JSON字节切片
+func (n Node) ToJSONBytesWithOptions(opts SerializeOptions) ([]byte, error) {
+	if !n.Exists() {
+		return []byte("null"), nil
+	}
+
+	buf := getBuffer()
+	defer putBuffer(buf)
+
+	if err := n.marshalNode(buf, opts, 0); err != nil {
+		return nil, err
+	}
+
+	result := make([]byte, len(buf.buf))
+	copy(result, buf.buf)
+	return result, nil
+}
+
+// ToJSONFast 快速序列化节点为JSON字符串（最小开销）
+func (n Node) ToJSONFast() string {
+	if !n.Exists() {
+		return "null"
+	}
+
+	buf := getBuffer()
+	defer putBuffer(buf)
+
+	n.fastMarshalNode(buf)
+	return buf.String()
+}
+
+// marshalNode 序列化节点
+func (n Node) marshalNode(buf *Buffer, opts SerializeOptions, depth int) error {
+	if !n.Exists() {
+		buf.WriteString("null")
+		return nil
+	}
+
+	data := n.getWorkingData()
+
+	switch n.typ {
+	case 'o':
+		return n.marshalObject(buf, opts, depth)
+	case 'a':
+		return n.marshalArray(buf, opts, depth)
+	case 's':
+		str, err := n.String()
+		if err != nil {
+			return err
+		}
+		writeString(buf, str, opts.EscapeHTML)
+		return nil
+	case 'n':
+		// 直接使用原始数字字符串，保持精度
+		buf.Write(data[n.start:n.end])
+		return nil
+	case 'b':
+		buf.Write(data[n.start:n.end])
+		return nil
+	case 'l':
+		buf.WriteString("null")
+		return nil
+	default:
+		return fmt.Errorf("unknown node type: %d", n.typ)
+	}
+}
+
+// fastMarshalNode 快速序列化节点
+func (n Node) fastMarshalNode(buf *Buffer) {
+	if !n.Exists() {
+		buf.WriteString("null")
+		return
+	}
+
+	data := n.getWorkingData()
+
+	switch n.typ {
+	case 'o':
+		n.fastMarshalObject(buf)
+	case 'a':
+		n.fastMarshalArray(buf)
+	case 's':
+		if str, err := n.String(); err == nil {
+			writeStringFast(buf, str)
+		} else {
+			buf.WriteString("null")
+		}
+	case 'n', 'b', 'l':
+		// 直接复制原始数据
+		buf.Write(data[n.start:n.end])
+	default:
+		buf.WriteString("null")
+	}
+}
+
+// marshalObject 序列化对象节点
+func (n Node) marshalObject(buf *Buffer, opts SerializeOptions, depth int) error {
+	buf.WriteByte('{')
+
+	written := false
+	indent := opts.Indent
+	hasIndent := indent != ""
+
+	if hasIndent {
+		depth++
+	}
+
+	// 收集键值对
+	var pairs []struct {
+		key   string
+		value Node
+	}
+
+	n.ForEach(func(key string, value Node) bool {
+		// 处理omitempty
+		if opts.OmitEmpty && n.isEmptyNode(value) {
+			return true
+		}
+
+		pairs = append(pairs, struct {
+			key   string
+			value Node
+		}{key, value})
+		return true
+	})
+
+	// 排序键（如果启用）
+	if opts.SortKeys && len(pairs) > 1 {
+		sortNodePairs(pairs)
+	}
+
+	for _, pair := range pairs {
+		if written {
+			buf.WriteByte(',')
+		}
+
+		if hasIndent {
+			buf.WriteByte('\n')
+			writeIndent(buf, indent, depth)
+		}
+
+		// 写入键
+		writeString(buf, pair.key, opts.EscapeHTML)
+		buf.WriteByte(':')
+
+		if hasIndent {
+			buf.WriteByte(' ')
+		}
+
+		// 写入值
+		if err := pair.value.marshalNode(buf, opts, depth); err != nil {
+			return err
+		}
+
+		written = true
+	}
+
+	if hasIndent && written {
+		buf.WriteByte('\n')
+		writeIndent(buf, indent, depth-1)
+	}
+
+	buf.WriteByte('}')
+	return nil
+}
+
+// fastMarshalObject 快速序列化对象节点
+func (n Node) fastMarshalObject(buf *Buffer) {
+	buf.WriteByte('{')
+	written := false
+
+	n.ForEach(func(key string, value Node) bool {
+		if written {
+			buf.WriteByte(',')
+		}
+
+		// 写入键
+		writeStringFast(buf, key)
+		buf.WriteByte(':')
+
+		// 写入值
+		value.fastMarshalNode(buf)
+		written = true
+		return true
+	})
+
+	buf.WriteByte('}')
+}
+
+// marshalArray 序列化数组节点
+func (n Node) marshalArray(buf *Buffer, opts SerializeOptions, depth int) error {
+	length := n.Len()
+
+	buf.WriteByte('[')
+
+	indent := opts.Indent
+	hasIndent := indent != ""
+
+	if hasIndent && length > 0 {
+		depth++
+	}
+
+	for i := 0; i < length; i++ {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+
+		if hasIndent {
+			buf.WriteByte('\n')
+			writeIndent(buf, indent, depth)
+		}
+
+		item := n.Index(i)
+		if err := item.marshalNode(buf, opts, depth); err != nil {
+			return err
+		}
+	}
+
+	if hasIndent && length > 0 {
+		buf.WriteByte('\n')
+		writeIndent(buf, indent, depth-1)
+	}
+
+	buf.WriteByte(']')
+	return nil
+}
+
+// fastMarshalArray 快速序列化数组节点
+func (n Node) fastMarshalArray(buf *Buffer) {
+	length := n.Len()
+
+	buf.WriteByte('[')
+
+	for i := 0; i < length; i++ {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+
+		item := n.Index(i)
+		item.fastMarshalNode(buf)
+	}
+
+	buf.WriteByte(']')
+}
+
+// isEmptyNode 检查节点是否为空
+func (n Node) isEmptyNode(node Node) bool {
+	if !node.Exists() {
+		return true
+	}
+
+	switch node.typ {
+	case 'a':
+		return node.Len() == 0
+	case 'o':
+		isEmpty := true
+		node.ForEach(func(key string, value Node) bool {
+			isEmpty = false
+			return false // 找到一个键就停止
+		})
+		return isEmpty
+	case 's':
+		if str, err := node.String(); err == nil {
+			return str == ""
+		}
+		return false
+	case 'n':
+		if num, err := node.Float(); err == nil {
+			return num == 0
+		}
+		return false
+	case 'b':
+		if b, err := node.Bool(); err == nil {
+			return !b
+		}
+		return false
+	case 'l':
+		return true
+	default:
+		return false
+	}
+}
+
+// sortNodePairs 排序节点键值对
+func sortNodePairs(pairs []struct {
+	key   string
+	value Node
+}) {
+	// 使用简单的插入排序，对小数组效率更高
+	for i := 1; i < len(pairs); i++ {
+		key := pairs[i]
+		j := i - 1
+		for j >= 0 && pairs[j].key > key.key {
+			pairs[j+1] = pairs[j]
+			j--
+		}
+		pairs[j+1] = key
+	}
+}
+
 // ===== 统计 / Keys =====
 
 func (n Node) Len() int {
