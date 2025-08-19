@@ -2,6 +2,7 @@ import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
+  base: '/fxjson/',
   title: "FxJSON",
   description: "FxJSON — 高性能Go JSON解析库",
   lang: 'zh-CN',
