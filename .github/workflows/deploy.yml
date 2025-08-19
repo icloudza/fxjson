@@ -53,7 +53,7 @@ jobs:
         working-directory: vitepress
 
       - name: Build with VitePress
-        run: pnpm run docs:build # 或 pnpm docs:build / yarn docs:build / bun run docs:build
+        run: pnpm run docs:build # 或 pnpm docs:build / yarn docs:build / bun run docs:build 666
         working-directory: vitepress
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
