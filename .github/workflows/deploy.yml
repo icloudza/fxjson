@@ -39,13 +39,17 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: pnpm # 或 pnpm / yarn
+          node-version: '22'
+          registry-url: https://registry.npmjs.org/
+
+      - name: 🔧 Install pnpm
+        run: npm install -g pnpm
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+
       - name: Install dependencies
-        run: pnpm ci # 或 pnpm install / yarn install / bun install
+        run: pnpm i # 或 pnpm install / yarn install / bun install
         working-directory: vitepress
 
       - name: Build with VitePress
