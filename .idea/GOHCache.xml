@@ -31,6 +31,13 @@
             </set>
           </value>
         </entry>
+        <entry key="BatchObjectAccess">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/performance_optimize.go" />
+            </set>
+          </value>
+        </entry>
         <entry key="BatchProcessor">
           <value>
             <set>
@@ -164,6 +171,13 @@
             </set>
           </value>
         </entry>
+        <entry key="ObjectKeyCache">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/performance_optimize.go" />
+            </set>
+          </value>
+        </entry>
         <entry key="ParseError">
           <value>
             <set>
@@ -269,6 +283,13 @@
             </set>
           </value>
         </entry>
+        <entry key="expandTask">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/fxjson.go" />
+            </set>
+          </value>
+        </entry>
         <entry key="fieldInfo">
           <value>
             <set>
@@ -332,7 +353,7 @@
         <entry key="file://$PROJECT_DIR$/benchmark_test.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755235444086" />
+              <option name="lastModified" value="1756555685645" />
               <option name="schema">
                 <list>
                   <option value="TestStruct" />
@@ -343,10 +364,17 @@
             </ScannedPath>
           </value>
         </entry>
+        <entry key="file://$PROJECT_DIR$/big_data_test.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1756555685645" />
+            </ScannedPath>
+          </value>
+        </entry>
         <entry key="file://$PROJECT_DIR$/cache.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1756536526414" />
+              <option name="lastModified" value="1756555685645" />
               <option name="schema">
                 <list>
                   <option value="CacheStats" />
@@ -363,7 +391,7 @@
         <entry key="file://$PROJECT_DIR$/debug.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755259710066" />
+              <option name="lastModified" value="1756555685646" />
               <option name="schema">
                 <list>
                   <option value="DebugInfo" />
@@ -379,14 +407,14 @@
         <entry key="file://$PROJECT_DIR$/doc.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1754921212835" />
+              <option name="lastModified" value="1756555685646" />
             </ScannedPath>
           </value>
         </entry>
         <entry key="file://$PROJECT_DIR$/errors.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755334012725" />
+              <option name="lastModified" value="1756555685646" />
               <option name="schema">
                 <list>
                   <option value="FxJSONError" />
@@ -399,7 +427,7 @@
         <entry key="file://$PROJECT_DIR$/extensions.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755258270628" />
+              <option name="lastModified" value="1756555685646" />
               <option name="schema">
                 <list>
                   <option value="FieldMapper" />
@@ -418,7 +446,7 @@
         <entry key="file://$PROJECT_DIR$/feature_benchmark_test.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755259710066" />
+              <option name="lastModified" value="1756555685646" />
               <option name="schema">
                 <list>
                   <option value="BenchNote" />
@@ -430,7 +458,7 @@
         <entry key="file://$PROJECT_DIR$/feature_test.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755259710066" />
+              <option name="lastModified" value="1756555685647" />
               <option name="schema">
                 <list>
                   <option value="TestNote" />
@@ -442,13 +470,14 @@
         <entry key="file://$PROJECT_DIR$/fxjson.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1756536526414" />
+              <option name="lastModified" value="1756555685651" />
               <option name="schema">
                 <list>
                   <option value="Node" />
                   <option value="JsonParam" />
                   <option value="ParseOptions" />
                   <option value="arrKey" />
+                  <option value="expandTask" />
                   <option value="structFieldInfo" />
                   <option value="keyValuePair" />
                   <option value="walkItem" />
@@ -461,14 +490,14 @@
         <entry key="file://$PROJECT_DIR$/fxjson_test.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755173402310" />
+              <option name="lastModified" value="1756555685652" />
             </ScannedPath>
           </value>
         </entry>
         <entry key="file://$PROJECT_DIR$/marshal.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755494807068" />
+              <option name="lastModified" value="1756555685652" />
               <option name="schema">
                 <list>
                   <option value="SerializeOptions" />
@@ -483,7 +512,7 @@
         <entry key="file://$PROJECT_DIR$/marshal_batch.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755494807068" />
+              <option name="lastModified" value="1756555685652" />
               <option name="schema">
                 <list>
                   <option value="BatchMarshaler" />
@@ -499,7 +528,7 @@
         <entry key="file://$PROJECT_DIR$/marshal_test.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755494807068" />
+              <option name="lastModified" value="1756555685653" />
               <option name="schema">
                 <list>
                   <option value="Person" />
@@ -513,28 +542,55 @@
         <entry key="file://$PROJECT_DIR$/marshal_types.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755494807069" />
+              <option name="lastModified" value="1756555685653" />
             </ScannedPath>
           </value>
         </entry>
         <entry key="file://$PROJECT_DIR$/marshal_utils.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755494807069" />
+              <option name="lastModified" value="1756555685653" />
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/performance_optimize.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1756555685653" />
+              <option name="schema">
+                <list>
+                  <option value="ObjectKeyCache" />
+                  <option value="BatchObjectAccess" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/performance_test.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1756555685654" />
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/stack_overflow_test.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1756555685654" />
             </ScannedPath>
           </value>
         </entry>
         <entry key="file://$PROJECT_DIR$/utils.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755334012728" />
+              <option name="lastModified" value="1756555685654" />
             </ScannedPath>
           </value>
         </entry>
         <entry key="file://$PROJECT_DIR$/utils_test.go">
           <value>
             <ScannedPath>
-              <option name="lastModified" value="1755334012728" />
+              <option name="lastModified" value="1756555685654" />
             </ScannedPath>
           </value>
         </entry>
@@ -547,6 +603,7 @@
         <entry key="aggregator" value="Aggregator" />
         <entry key="arr_key" value="arrKey" />
         <entry key="batch_marshaler" value="BatchMarshaler" />
+        <entry key="batch_object_access" value="BatchObjectAccess" />
         <entry key="batch_processor" value="BatchProcessor" />
         <entry key="bench_note" value="BenchNote" />
         <entry key="buffer" value="Buffer" />
@@ -560,6 +617,7 @@
         <entry key="debug_info" value="DebugInfo" />
         <entry key="default_logger" value="DefaultLogger" />
         <entry key="diff_result" value="DiffResult" />
+        <entry key="expand_task" value="expandTask" />
         <entry key="field_info" value="fieldInfo" />
         <entry key="field_mapper" value="FieldMapper" />
         <entry key="fx_json_error" value="FxJSONError" />
@@ -570,6 +628,7 @@
         <entry key="lazy_loader" value="LazyLoader" />
         <entry key="memory_cache" value="MemoryCache" />
         <entry key="node" value="Node" />
+        <entry key="object_key_cache" value="ObjectKeyCache" />
         <entry key="parse_error" value="ParseError" />
         <entry key="parse_options" value="ParseOptions" />
         <entry key="performance_monitor" value="PerformanceMonitor" />
