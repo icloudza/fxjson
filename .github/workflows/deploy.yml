@@ -3,10 +3,9 @@
 name: Deploy VitePress site to Pages
 
 on:
-  # 在针对 `main` 分支的推送上运行。如果你
-  # 使用 `master` 分支作为默认分支，请将其更改为 `master`
+  # 在针对 `docs` 分支的推送上运行，该分支包含 VitePress 文档
   push:
-    branches: [main]
+    branches: [docs]
 
   # 允许你从 Actions 选项卡手动运行此工作流程
   workflow_dispatch:
@@ -50,15 +49,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm i # 或 pnpm install / yarn install / bun install
-        working-directory: vitepress
 
       - name: Build with VitePress
         run: pnpm run docs:build # 或 pnpm docs:build / yarn docs:build / bun run docs:build 666
-        working-directory: vitepress
+        
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: vitepress/.vitepress/dist
+          path: .vitepress/dist
   # 部署工作
   deploy:
     environment:
