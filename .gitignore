@@ -1,3 +1,4 @@
 /vitepress/.vitepress/cache/
 /vitepress/.vitepress/dist/
-/.spec-workflow/
+.spec-workflow
+.DS_Store
