@@ -5,7 +5,7 @@
 
 [📄 English Documentation](README.md)
 
-# FxJSON ![Flame](flame.png) - 高性能Go JSON解析库
+# FxJSON 🔥 - 高性能Go JSON解析库
 
 FxJSON 是一个专注性能的Go JSON解析库，提供高效的JSON遍历和访问能力。相比标准库有显著的性能提升，同时保持内存安全和易用性。
 

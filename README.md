@@ -5,7 +5,7 @@
 
 [📄 中文文档 / Chinese Documentation](README_ZH.md)
 
-# FxJSON ![Flame](flame.png) - High-Performance JSON Parser for Go
+# FxJSON 🔥 - High-Performance JSON Parser for Go
 
 FxJSON is a Go JSON parsing library focused on performance, providing efficient JSON traversal and access capabilities.
 It offers improved performance compared to the standard library while maintaining memory safety and ease of use.

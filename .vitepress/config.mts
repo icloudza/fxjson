@@ -6,6 +6,7 @@ export default defineConfig({
   title: "FxJSON",
   description: "FxJSON — 高性能Go JSON解析库",
   lang: 'zh-CN',
+  ignoreDeadLinks: true,
   head: [
     ['meta', { name: 'keywords', content: 'Go, JSON, 解析, 高性能, 零分配, FxJSON' }],
     ['meta', { name: 'author', content: 'iCloudZa' }],
