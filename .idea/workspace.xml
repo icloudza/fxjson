@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="ALL" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="04d06bed-a45b-4a5d-b093-719720aef114" name="更改" comment="ci: 添加 GitHub Pages 部署工作流程&#10;&#10;- 新增 deploy.yml 文件，配置 VitePress站点构建和部署&#10;- 设置 GITHUB_TOKEN 权限，以允许部署到 GitHub Pages&#10;- 添加构建和部署两个 job，确保有序进行&#10;- 使用 actions/checkout、actions/setup-node 等官方动作&#10;- 配置环境变量和 artifact 上传" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Go File" />
+      </list>
+    </option>
+  </component>
+  <component name="GOROOT" url="file://$USER_HOME$/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.6.darwin-arm64" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;icloudza&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/icloudza/fxjson.git&quot;,
+    &quot;accountId&quot;: &quot;1384af39-39ae-4689-abcc-cfb4e6e3c9c7&quot;
+  }
+}</component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/README_ZH.md" root0="SKIP_INSPECTION" root1="SKIP_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/WIKI_ZH.md" root0="FORCE_HIGHLIGHTING" root1="SKIP_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/vitepress/examples/index.md" root0="SKIP_HIGHLIGHTING" root1="SKIP_HIGHLIGHTING" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="318fmHfHM80WuaoMOUzjL6jQjDa" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;DefaultGoTemplateProperty&quot;: &quot;Go File&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkBasicParsing.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkComplexTraversal_fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkDataTransformation.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkDecodeStruct_fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkDecode_fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkDecode_gjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkDecode_std.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkEdgeCase_SpecialChars.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkFastFormatJSON_escape.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkFastFormatJSON_indent_prec.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkFastFormatJSON_passthrough.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkFxJsonWithParam_fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkIndex_fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkIsNull_fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkJsonNoAllocWithParam_fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkJsonWithParam2_fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkJsonWithParam_fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkJsonWithParam_std.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkLargeDataTraversal_fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkStdLibJson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkVsGJSON_DeepPath.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 BenchmarkVsGJSON_Simple.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 TestEdgeCases/unicode_handling.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 TestErrorHandling/memory_safety.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 TestErrorHandling/out_of_range_operations.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 TestNestedJSONExpansion/deeply_nested_json.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 TestNestedJSONExpansion/invalid_nested_json.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.github.com/icloudza/fxjson 中的 TestTypeConversionBoundaries/unicode_in_strings.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.go test github.com/icloudza/fxjson.executor&quot;: &quot;Run&quot;,
+    &quot;Go 测试.gobench benchmark_test.go.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.GoLinterPluginOnboarding&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.GoLinterPluginStorageMigration&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/cloudza/Desktop/Development/Go/fxjson&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;onboarding.tips.debug.path&quot;: &quot;/Users/cloudza/Desktop/Development/Go/fxjson/main.go&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Applications/GoLand.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Go 测试.github.com/icloudza/fxjson 中的 BenchmarkBasicParsing">
+    <configuration name="github.com/icloudza/fxjson 中的 BenchmarkBasicParsing" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="fxjson" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/icloudza/fxjson" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gobench" />
+      <pattern value="^\QBenchmarkBasicParsing\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="github.com/icloudza/fxjson 中的 BenchmarkDataTransformation" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="fxjson" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/icloudza/fxjson" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gobench" />
+      <pattern value="^\QBenchmarkDataTransformation\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="github.com/icloudza/fxjson 中的 BenchmarkDecodeStruct_fxjson" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="fxjson" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/icloudza/fxjson" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gobench" />
+      <pattern value="^\QBenchmarkDecodeStruct_fxjson\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="github.com/icloudza/fxjson 中的 BenchmarkDecode_std" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="fxjson" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/icloudza/fxjson" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gobench" />
+      <pattern value="^\QBenchmarkDecode_std\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="go test github.com/icloudza/fxjson" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="fxjson" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/icloudza/fxjson" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go 测试.github.com/icloudza/fxjson 中的 BenchmarkBasicParsing" />
+        <item itemvalue="Go 测试.go test github.com/icloudza/fxjson" />
+        <item itemvalue="Go 测试.github.com/icloudza/fxjson 中的 BenchmarkDataTransformation" />
+        <item itemvalue="Go 测试.github.com/icloudza/fxjson 中的 BenchmarkDecodeStruct_fxjson" />
+        <item itemvalue="Go 测试.github.com/icloudza/fxjson 中的 BenchmarkDecode_std" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-gosdk-3b128438d3f6-07d2d2d66b1e-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-251.27812.54" />
+        <option value="bundled-js-predefined-d6986cc7102b-09060db00ec0-JavaScript-GO-251.27812.54" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="04d06bed-a45b-4a5d-b093-719720aef114" name="更改" comment="" />
+      <created>1754910777698</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1754910777698</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="update git username" />
+    <MESSAGE value="refactor(benchmark): 精简基准测试代码并优化测试用例&#10;&#10;- 移除了大量冗余的测试数据和测试函数- 保留了核心的基准测试功能，包括 Get、GetByPath、Int、Float、Bool、String 等&#10;- 增加了与 gjson 库的对比基准测试&#10;- 优化了测试用例，提高了测试的可读性和可维护性" />
+    <MESSAGE value="docs: 添加中文文档并优化 README 内容&#10;&#10;- 新增 README_ZH.md 文件，提供中文文档&#10;- 更新 README.md 文件，增加英文描述和示例&#10;- 添加基准测试和火焰图生成的相关信息&#10;- 补充 API 概览和注意事项说明" />
+    <MESSAGE value="docs:完善 doc.go 文件内容&#10;&#10;- 添加了 fxjson包的详细文档注释&#10;- 说明了包的主要功能和特点&#10;- 提供了使用示例和性能基准&#10;- 指出了假设和限制条件&#10;-引用了完整的文档、基准测试和示例链接" />
+    <MESSAGE value="feat(Node): 增加字符串类型 Len() 方法&#10;&#10;- 为 Node 类型的 Len() 方法添加对字符串类型的支持&#10;- 实现字符串长度的计算，包括处理转义字符&#10;- 优化代码结构，增加注释提高可读性" />
+    <MESSAGE value="refactor(fxjson): 重构 Node 类型的方法&#10;&#10;- 更新了 String、Int、Uint、Float、Bool、NumStr 等方法的签名和实现&#10;- 新增了 IsObject、IsArray、IsString、IsNumber、IsBool、IsNull、IsScalar、IsContainer等谓词方法&#10;-优化了 Exists、Raw、RawString、Decode 等方法的实现" />
+    <MESSAGE value="refactor(fxjson): 重命名 GetByPath 为 GetPath&#10;&#10;- 将 GetByPath 方法重命名为 GetPath，简化了方法名，提高了代码的可读性&#10;- 更新了相关的 benchmark 测试和文档中的方法调用&#10;- 修改了 README 文件中的示例代码和特性描述" />
+    <MESSAGE value="refactor(fxjson): 优化 Node.String() 方法&#10;&#10;- 将 String() 方法的返回类型从 string 改为 (string, error)- 增加了对节点类型和内容的检查，提高了错误处理能力&#10;- 保留了原有的逻辑，确保向后兼容" />
+    <MESSAGE value="fix.fxjson: 修复安全漏洞并优化 JSON 解析&#10;&#10;-修复了越界访问和错误的转义处理可能导致的远程代码执行漏洞&#10;- 优化了 JSON 解析逻辑，提高了对象和数组的扫描效率&#10;- 增加了对 JSON 数字类型的有效性检查&#10;- 修复了 benchmark测试中未使用的变量" />
+    <MESSAGE value="fix(fxjson): 将空字符串处理从错误改为正常返回- 修改了 fxjson.go 文件中的字符串处理逻辑&#10;- 当解析的字符串为空时，不再返回错误，而是将空字符串作为正常结果返回" />
+    <MESSAGE value="fix(fxjson): 将空字符串处理从错误改为正常返回- 修改了 fxjson.go 文件中的字符串处理逻辑&#10;- 当解析的字符串为空时，不再返回错误，而是将空字符串作为正常结果返回&#10;- 这个改动提高了代码的健壮性，避免了不必要的错误处理" />
+    <MESSAGE value="feat(benchmark): 添加标准库 json 包的基准测试&#10;&#10;-为每个 gjson 基准测试添加了对应的 std (标准库) 基准测试&#10;- 更新了基准测试的命名和分类，使其更加清晰&#10;- 移除了对 gjson 的依赖，简化了项目的依赖结构" />
+    <MESSAGE value="feat.fxjson: 添加 Json() 方法并优化错误处理&#10;&#10;- 为 Node 类型添加 Json() 方法，用于获取节点的 JSON 字符串表示&#10;- 优化了多个函数的错误处理，使用 fmt.Errorf替代 errors.New&#10;- 新增 benchmark 测试用例，测试 Json() 方法的性能" />
+    <MESSAGE value="refactor(fxjson): 优化 Node.Json() 方法并添加错误处理&#10;&#10;- 添加错误处理，返回空字符串改为返回错误信息&#10;-增加类型安全检查，仅允许对象和数组类型调用 Json() 方法&#10;- 使用 unsafe.String 提高字符串转换效率" />
+    <MESSAGE value="feat(fxjson): 增加嵌套JSON字符串的智能展开功能&#10;&#10;- 新增unescapeJSON函数用于解转义JSON字符串- 实现isValidJSON函数检查字符串是否为有效的JSON&#10;- 递归展开嵌套的JSON字符串，支持对象、数组和字符串类型的展开&#10;- 优化FromBytes函数，支持智能展开嵌套的转义JSON&#10;- 更新相关方法以支持新的展开功能，包括Get、GetPath、Raw等" />
+    <MESSAGE value="feat(benchmark): 添加 JSON遍历相关性能基准测试&#10;&#10;- 新增 ForEach、ArrayForEach、Walk 等遍历方法的基准测试&#10;- 添加复杂遍历和大规模数据遍历的基准测试&#10;- 对比 fxjson 和标准库 json 的性能差异" />
+    <MESSAGE value="feat(api): 添加 FloatString 方法并完善 API 文档&#10;&#10;- 新增 FloatString 方法，用于获取保持原始 JSON 格式的数字字符串&#10;- 更新 README 和 README_ZH 文件，添加完整的 API 参考文档- 增加 API 参考文档，包括核心方法、回调函数类型和节点类型&#10;-优化代码结构，为其他数据类型转换方法留下空间" />
+    <MESSAGE value="feat(security): 添加 JSON 解析安全限制和选项&#10;&#10;- 新增 ParseOptions 结构体，用于控制 JSON 解析行为和安全限制- 实现 FromBytesWithOptions 函数，支持使用自定义解析选项- 添加 validateJSON 函数，用于验证 JSON 数据的安全性&#10;- 在 FromBytes 和 Get 函数中集成安全检查&#10;- 优化零拷贝字符串提取，增加空字符串的安全处理" />
+    <MESSAGE value="feat(core): 添加缓存、调试和性能监控功能&#10;&#10;- 新增缓存系统，支持内存缓存和自定义缓存实现&#10;- 添加调试模式和调试信息收集功能&#10;- 实现性能监控和性能优化建议生成&#10;- 增加JSON数据结构分析和格式化输出功能" />
+    <MESSAGE value="perf(cache): 优化缓存键生成算法并添加错误处理功能- 使用 CRC32 替代 MD5 生成缓存键，提高性能&#10;- 添加 DisableCaching 函数以禁用全局缓存&#10;- 新增错误处理相关代码，包括错误类型定义、错误对象创建和上下文信息&#10;-优化 JSON 解析前的格式判断逻辑" />
+    <MESSAGE value="feat: 添加 JSON 序列化功能&#10;&#10;- 实现了 Node 类型的 ToJSON、ToJSONIndent 和 ToJSONFast 方法&#10;- 添加了 Marshal、MarshalIndent 和 FastMarshal 函数，用于序列化 Go值&#10;- 新增 BatchMarshaler、StreamMarshaler 等类型，支持批量和流式序列化&#10;- 优化了性能，减少了内存分配和字符串操作" />
+    <MESSAGE value="update" />
+    <MESSAGE value="build(deps): 更新项目依赖并添加配置文件&#10;&#10;- 更新 mark.js 和 speakingurl 依赖至最新版本&#10;- 添加 ESLint、EditorConfig、GitAttributes 等配置文件&#10;- 设置 Travis CI 配置&#10;- 更新 Shiki 语言定义" />
+    <MESSAGE value="ci: 添加 GitHub Pages 部署工作流程&#10;&#10;- 新增 deploy.yml 文件，配置 VitePress站点构建和部署&#10;- 设置 GITHUB_TOKEN 权限，以允许部署到 GitHub Pages&#10;- 添加构建和部署两个 job，确保有序进行&#10;- 使用 actions/checkout、actions/setup-node 等官方动作&#10;- 配置环境变量和 artifact 上传" />
+    <option name="LAST_COMMIT_MESSAGE" value="ci: 添加 GitHub Pages 部署工作流程&#10;&#10;- 新增 deploy.yml 文件，配置 VitePress站点构建和部署&#10;- 设置 GITHUB_TOKEN 权限，以允许部署到 GitHub Pages&#10;- 添加构建和部署两个 job，确保有序进行&#10;- 使用 actions/checkout、actions/setup-node 等官方动作&#10;- 配置环境变量和 artifact 上传" />
+  </component>
+  <component name="VgoProject">
+    <settings-migrated>true</settings-migrated>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/fxjson$go_test_github_com_icloudza_fxjson.out" NAME="go test github.com/icloudza/fxjson 覆盖结果" MODIFIED="1754915766940" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="GoCoverage" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
+  </component>
+</project>
