@@ -1,0 +1,595 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GoORMHelperCache">
+    <option name="schemaMapping">
+      <map>
+        <entry key="Address">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal_test.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="AggOperation">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/extensions.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="Aggregator">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/extensions.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="BatchMarshaler">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal_batch.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="BatchProcessor">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/cache.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="BenchNote">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/feature_benchmark_test.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="Buffer">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="CacheItem">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/cache.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="CacheStats">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/cache.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="Company">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal_test.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="ComplexStruct">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/benchmark_test.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="Condition">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/extensions.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="DataValidator">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/extensions.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="DebugInfo">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/debug.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="DefaultLogger">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/debug.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="DiffResult">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/debug.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="FieldMapper">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/extensions.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="FxJSONError">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/errors.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="JsonParam">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/fxjson.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="LargeStruct">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/benchmark_test.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="LazyLoader">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/cache.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="MemoryCache">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/cache.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="Node">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/fxjson.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="ParseError">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/debug.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="ParseOptions">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/fxjson.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="PerformanceMonitor">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/cache.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="Person">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal_test.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="Position">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/errors.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="QueryBuilder">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/extensions.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="SerializeOptions">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="SortField">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/extensions.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="StreamMarshaler">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal_batch.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="TestNote">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/feature_test.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="TestStruct">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/benchmark_test.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="ValidationError">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/debug.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="ValidationRule">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/extensions.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="arrKey">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/fxjson.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="chunkResult">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal_batch.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="fieldInfo">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="keyValue">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/fxjson.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="keyValuePair">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/fxjson.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="result">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal_batch.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="structFieldInfo">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/fxjson.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="task">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal_batch.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="typeInfo">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/marshal.go" />
+            </set>
+          </value>
+        </entry>
+        <entry key="walkItem">
+          <value>
+            <set>
+              <option value="file://$PROJECT_DIR$/fxjson.go" />
+            </set>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="scannedPathMapping">
+      <map>
+        <entry key="file://$PROJECT_DIR$/benchmark_test.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755235444086" />
+              <option name="schema">
+                <list>
+                  <option value="TestStruct" />
+                  <option value="ComplexStruct" />
+                  <option value="LargeStruct" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/cache.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1756536526414" />
+              <option name="schema">
+                <list>
+                  <option value="CacheStats" />
+                  <option value="CacheItem" />
+                  <option value="MemoryCache" />
+                  <option value="PerformanceMonitor" />
+                  <option value="BatchProcessor" />
+                  <option value="LazyLoader" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/debug.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755259710066" />
+              <option name="schema">
+                <list>
+                  <option value="DebugInfo" />
+                  <option value="ParseError" />
+                  <option value="ValidationError" />
+                  <option value="DefaultLogger" />
+                  <option value="DiffResult" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/doc.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1754921212835" />
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/errors.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755334012725" />
+              <option name="schema">
+                <list>
+                  <option value="FxJSONError" />
+                  <option value="Position" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/extensions.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755258270628" />
+              <option name="schema">
+                <list>
+                  <option value="FieldMapper" />
+                  <option value="QueryBuilder" />
+                  <option value="Condition" />
+                  <option value="SortField" />
+                  <option value="Aggregator" />
+                  <option value="AggOperation" />
+                  <option value="ValidationRule" />
+                  <option value="DataValidator" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/feature_benchmark_test.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755259710066" />
+              <option name="schema">
+                <list>
+                  <option value="BenchNote" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/feature_test.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755259710066" />
+              <option name="schema">
+                <list>
+                  <option value="TestNote" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/fxjson.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1756536526414" />
+              <option name="schema">
+                <list>
+                  <option value="Node" />
+                  <option value="JsonParam" />
+                  <option value="ParseOptions" />
+                  <option value="arrKey" />
+                  <option value="structFieldInfo" />
+                  <option value="keyValuePair" />
+                  <option value="walkItem" />
+                  <option value="keyValue" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/fxjson_test.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755173402310" />
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/marshal.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755494807068" />
+              <option name="schema">
+                <list>
+                  <option value="SerializeOptions" />
+                  <option value="Buffer" />
+                  <option value="fieldInfo" />
+                  <option value="typeInfo" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/marshal_batch.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755494807068" />
+              <option name="schema">
+                <list>
+                  <option value="BatchMarshaler" />
+                  <option value="chunkResult" />
+                  <option value="task" />
+                  <option value="result" />
+                  <option value="StreamMarshaler" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/marshal_test.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755494807068" />
+              <option name="schema">
+                <list>
+                  <option value="Person" />
+                  <option value="Address" />
+                  <option value="Company" />
+                </list>
+              </option>
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/marshal_types.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755494807069" />
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/marshal_utils.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755494807069" />
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/utils.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755334012728" />
+            </ScannedPath>
+          </value>
+        </entry>
+        <entry key="file://$PROJECT_DIR$/utils_test.go">
+          <value>
+            <ScannedPath>
+              <option name="lastModified" value="1755334012728" />
+            </ScannedPath>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="tableStructMapping">
+      <map>
+        <entry key="address" value="Address" />
+        <entry key="agg_operation" value="AggOperation" />
+        <entry key="aggregator" value="Aggregator" />
+        <entry key="arr_key" value="arrKey" />
+        <entry key="batch_marshaler" value="BatchMarshaler" />
+        <entry key="batch_processor" value="BatchProcessor" />
+        <entry key="bench_note" value="BenchNote" />
+        <entry key="buffer" value="Buffer" />
+        <entry key="cache_item" value="CacheItem" />
+        <entry key="cache_stats" value="CacheStats" />
+        <entry key="chunk_result" value="chunkResult" />
+        <entry key="company" value="Company" />
+        <entry key="complex_struct" value="ComplexStruct" />
+        <entry key="condition" value="Condition" />
+        <entry key="data_validator" value="DataValidator" />
+        <entry key="debug_info" value="DebugInfo" />
+        <entry key="default_logger" value="DefaultLogger" />
+        <entry key="diff_result" value="DiffResult" />
+        <entry key="field_info" value="fieldInfo" />
+        <entry key="field_mapper" value="FieldMapper" />
+        <entry key="fx_json_error" value="FxJSONError" />
+        <entry key="json_param" value="JsonParam" />
+        <entry key="key_value" value="keyValue" />
+        <entry key="key_value_pair" value="keyValuePair" />
+        <entry key="large_struct" value="LargeStruct" />
+        <entry key="lazy_loader" value="LazyLoader" />
+        <entry key="memory_cache" value="MemoryCache" />
+        <entry key="node" value="Node" />
+        <entry key="parse_error" value="ParseError" />
+        <entry key="parse_options" value="ParseOptions" />
+        <entry key="performance_monitor" value="PerformanceMonitor" />
+        <entry key="person" value="Person" />
+        <entry key="position" value="Position" />
+        <entry key="query_builder" value="QueryBuilder" />
+        <entry key="result" value="result" />
+        <entry key="serialize_options" value="SerializeOptions" />
+        <entry key="sort_field" value="SortField" />
+        <entry key="stream_marshaler" value="StreamMarshaler" />
+        <entry key="struct_field_info" value="structFieldInfo" />
+        <entry key="task" value="task" />
+        <entry key="test_note" value="TestNote" />
+        <entry key="test_struct" value="TestStruct" />
+        <entry key="type_info" value="typeInfo" />
+        <entry key="validation_error" value="ValidationError" />
+        <entry key="validation_rule" value="ValidationRule" />
+        <entry key="walk_item" value="walkItem" />
+      </map>
+    </option>
+    <option name="lastTimeChecked" value="1756536082605" />
+  </component>
+</project>
