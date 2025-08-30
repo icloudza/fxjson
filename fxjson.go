@@ -317,14 +317,14 @@ func skipStringSimple(data []byte, pos int, end int) int {
 	return pos
 }
 
-// expandNestedJSON 递归展开嵌套的JSON字符串
+// expandNestedJSON 迭代展开嵌套的JSON字符串，避免栈溢出
 func expandNestedJSON(data []byte) []byte {
 	node := parseRootNode(data)
 	if !node.Exists() {
 		return data
 	}
 
-	expanded, changed := expandNode(node)
+	expanded, changed := expandNodeIterative(node)
 	if !changed {
 		return data
 	}
@@ -346,6 +346,230 @@ func expandNode(n Node) ([]byte, bool) {
 	default:
 		return data[n.start:n.end], false
 	}
+}
+
+// expandTaskType 表示展开任务的类型
+type expandTaskType int
+
+const (
+	expandTaskExpand expandTaskType = iota // 展开任务
+	expandTaskResult                       // 结果收集任务
+)
+
+// expandTask 展开任务结构
+type expandTask struct {
+	taskType expandTaskType
+	node     Node
+	result   *[]byte  // 用于存储结果
+	changed  *bool    // 用于标记是否有变化
+	parentID int      // 父任务ID，用于结果收集
+}
+
+// expandNodeIterative 使用迭代方式展开节点，避免栈溢出
+func expandNodeIterative(rootNode Node) ([]byte, bool) {
+	// 使用栈来管理展开任务
+	stack := make([]expandTask, 0, 64) // 预分配容量避免频繁扩容
+	
+	// 结果存储
+	var result []byte
+	var changed bool
+	
+	// 推入根任务
+	stack = append(stack, expandTask{
+		taskType: expandTaskExpand,
+		node:     rootNode,
+		result:   &result,
+		changed:  &changed,
+	})
+	
+	for len(stack) > 0 {
+		// 弹出任务
+		task := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		
+		switch task.taskType {
+		case expandTaskExpand:
+			data := task.node.getWorkingData()
+			
+			switch task.node.typ {
+			case 'o':
+				expandedObj, objChanged := expandObjectIterative(task.node, data)
+				*task.result = expandedObj
+				*task.changed = objChanged
+				
+			case 'a':
+				expandedArr, arrChanged := expandArrayIterative(task.node, data)
+				*task.result = expandedArr
+				*task.changed = arrChanged
+				
+			case 's':
+				expandedStr, strChanged := expandStringIterative(task.node, data)
+				*task.result = expandedStr
+				*task.changed = strChanged
+				
+			default:
+				*task.result = data[task.node.start:task.node.end]
+				*task.changed = false
+			}
+		}
+	}
+	
+	return result, changed
+}
+
+// expandStringIterative 迭代展开字符串，避免栈溢出
+func expandStringIterative(n Node, data []byte) ([]byte, bool) {
+	if n.start+1 >= n.end {
+		return data[n.start:n.end], false
+	}
+
+	// 提取字符串内容（不包括引号）
+	strContent := string(data[n.start+1 : n.end-1])
+
+	// 解转义
+	unescaped := unescapeJSON(strContent)
+
+	// 检查是否为有效的JSON
+	if isValidJSON(unescaped) {
+		// 使用迭代方式展开嵌套的JSON，避免递归调用expandNestedJSON
+		nestedNode := parseRootNode([]byte(unescaped))
+		if !nestedNode.Exists() {
+			return data[n.start:n.end], false
+		}
+		
+		// 直接调用迭代版本，避免递归
+		nestedExpanded, _ := expandNodeIterative(nestedNode)
+		return nestedExpanded, true
+	}
+
+	return data[n.start:n.end], false
+}
+
+// expandObjectIterative 迭代展开对象
+func expandObjectIterative(n Node, data []byte) ([]byte, bool) {
+	var result strings.Builder
+	result.WriteByte('{')
+
+	pos := n.start + 1 // skip '{'
+	changed := false
+	first := true
+
+	for pos < n.end {
+		// 跳过空白
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos >= n.end || data[pos] == '}' {
+			break
+		}
+
+		if !first {
+			result.WriteByte(',')
+		}
+		first = false
+
+		// 解析键
+		if data[pos] != '"' {
+			break
+		}
+
+		keyStart := pos
+		pos++
+		for pos < n.end && data[pos] != '"' {
+			if data[pos] == '\\' {
+				pos++
+			}
+			pos++
+		}
+		pos++ // skip closing quote
+
+		result.Write(data[keyStart:pos])
+
+		// 跳过冒号
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos < n.end && data[pos] == ':' {
+			pos++
+			result.WriteByte(':')
+		}
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+
+		// 解析值
+		valueNode := parseValueAt(data, pos, n.end)
+		
+		// 使用迭代方式展开值
+		expandedValue, valueChanged := expandNodeIterative(valueNode)
+		result.Write(expandedValue)
+
+		if valueChanged {
+			changed = true
+		}
+
+		pos = valueNode.end
+
+		// 跳过逗号
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos < n.end && data[pos] == ',' {
+			pos++
+		}
+	}
+
+	result.WriteByte('}')
+	return []byte(result.String()), changed
+}
+
+// expandArrayIterative 迭代展开数组
+func expandArrayIterative(n Node, data []byte) ([]byte, bool) {
+	var result strings.Builder
+	result.WriteByte('[')
+
+	pos := n.start + 1 // skip '['
+	changed := false
+	first := true
+
+	for pos < n.end {
+		// 跳过空白
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos >= n.end || data[pos] == ']' {
+			break
+		}
+
+		if !first {
+			result.WriteByte(',')
+		}
+		first = false
+
+		// 解析值
+		valueNode := parseValueAt(data, pos, n.end)
+		
+		// 使用迭代方式展开值
+		expandedValue, valueChanged := expandNodeIterative(valueNode)
+		result.Write(expandedValue)
+
+		if valueChanged {
+			changed = true
+		}
+
+		pos = valueNode.end
+
+		// 跳过逗号
+		for pos < n.end && data[pos] <= ' ' {
+			pos++
+		}
+		if pos < n.end && data[pos] == ',' {
+			pos++
+		}
+	}
+
+	result.WriteByte(']')
+	return []byte(result.String()), changed
 }
 
 // expandObject 展开对象
@@ -704,6 +928,10 @@ func (n Node) Get(path string) Node {
 	}
 
 	data := n.getWorkingData()
+	// 安全检查：确保路径非空且数据有效
+	if len(path) == 0 || len(data) == 0 {
+		return Node{}
+	}
 	keyData := unsafe.StringData(path)
 	keyLen := len(path)
 	pos := findObjectField(data, n.start+1, n.end, keyData, 0, keyLen)
@@ -760,6 +988,14 @@ func (n Node) GetPath(path string) Node {
 					pathPos++
 					break
 				}
+				// 安全检查：确保字符是数字
+				if c < '0' || c > '9' {
+					return Node{} // 无效的数组索引格式
+				}
+				// 防止整数溢出
+				if idx > (int(^uint(0)>>1)-int(c-'0'))/10 {
+					return Node{} // 索引过大，防止溢出
+				}
 				idx = idx*10 + int(c-'0')
 				pathPos++
 			}
@@ -806,10 +1042,37 @@ func findObjectField(data []byte, start int, end int, keyData *byte, keyStart in
 		fieldStart := pos
 		match := true
 		if pos+keyLen <= end && data[pos+keyLen] == '"' {
-			for i := 0; i < keyLen; i++ {
-				if data[fieldStart+i] != *(*byte)(unsafe.Add(unsafe.Pointer(keyData), keyStart+i)) {
-					match = false
-					break
+			// 优化：使用更高效的字节比较
+			if keyLen > 0 {
+				fieldBytes := data[fieldStart : fieldStart+keyLen]
+				keyBytes := unsafe.Slice((*byte)(unsafe.Add(unsafe.Pointer(keyData), keyStart)), keyLen)
+				
+				// 对于较长的键，使用8字节块比较
+				if keyLen >= 8 {
+					// 比较前8字节
+					fieldPtr := *(*uint64)(unsafe.Pointer(&fieldBytes[0]))
+					keyPtr := *(*uint64)(unsafe.Pointer(&keyBytes[0]))
+					if fieldPtr == keyPtr {
+						// 比较剩余字节
+						match = true
+						for i := 8; i < keyLen; i++ {
+							if fieldBytes[i] != keyBytes[i] {
+								match = false
+								break
+							}
+						}
+					} else {
+						match = false
+					}
+				} else {
+					// 短键使用逐字节比较
+					match = true
+					for i := 0; i < keyLen; i++ {
+						if fieldBytes[i] != keyBytes[i] {
+							match = false
+							break
+						}
+					}
 				}
 			}
 			if match {
@@ -1172,6 +1435,10 @@ func (n Node) String() (string, error) {
 		return "", fmt.Errorf("node is not a string type (got type=%q)", n.Kind())
 	}
 	data := n.getWorkingData()
+	// 增强边界检查
+	if len(data) == 0 || n.start < 0 || n.end > len(data) || n.start >= n.end {
+		return "", fmt.Errorf("invalid node bounds: start=%d end=%d len(data)=%d", n.start, n.end, len(data))
+	}
 	if n.start+1 >= n.end {
 		return "", fmt.Errorf("invalid string bounds: start=%d end=%d", n.start, n.end)
 	}
@@ -1196,7 +1463,12 @@ func (n Node) Int() (int64, error) {
 	if n.typ != 'n' || n.start >= n.end {
 		return 0, fmt.Errorf("node is not a number type (got type=%q)", n.Kind())
 	}
-	data := n.getWorkingData()[n.start:n.end]
+	workingData := n.getWorkingData()
+	// 增强边界检查
+	if len(workingData) == 0 || n.start < 0 || n.end > len(workingData) || n.start >= n.end {
+		return 0, fmt.Errorf("invalid node bounds: start=%d end=%d len(data)=%d", n.start, n.end, len(workingData))
+	}
+	data := workingData[n.start:n.end]
 	if len(data) == 0 {
 		return 0, fmt.Errorf("empty number at [%d:%d] (type=%q)", n.start, n.end, n.Kind())
 	}
