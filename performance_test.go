@@ -53,8 +53,7 @@ func TestPerformanceOptimizations(t *testing.T) {
 		t.Logf("原始Get方法1000次查找时间: %v", originalTime)
 	})
 	
-	t.Run("OptimizedGetFastPerformance", func(t *testing.T) {
-		ClearKeyCache() // 清除缓存确保公平比较
+	t.Run("OptimizedGetPerformance", func(t *testing.T) {
 		
 		keys := make([]string, 1000)
 		for i := 0; i < 1000; i++ {
@@ -63,39 +62,15 @@ func TestPerformanceOptimizations(t *testing.T) {
 		
 		start := time.Now()
 		for _, key := range keys {
-			item := node.GetFast(key)
+			item := node.Get(key)
 			if !item.Exists() {
 				t.Fatalf("键 %s 不存在", key)
 			}
 		}
 		optimizedTime := time.Since(start)
-		t.Logf("优化GetFast方法1000次查找时间: %v", optimizedTime)
+		t.Logf("优化后的Get方法1000次查找时间: %v", optimizedTime)
 	})
 	
-	t.Run("BatchAccessPerformance", func(t *testing.T) {
-		keys := make([]string, 1000)
-		for i := 0; i < 1000; i++ {
-			keys[i] = fmt.Sprintf("key_%d", i*10)
-		}
-		
-		start := time.Now()
-		batchAccess := node.NewBatchAccess(keys)
-		results := batchAccess.GetAll()
-		batchTime := time.Since(start)
-		
-		// 验证结果
-		if len(results) != 1000 {
-			t.Fatalf("批量访问结果数量不匹配: %d != 1000", len(results))
-		}
-		
-		for _, key := range keys {
-			if !results[key].Exists() {
-				t.Fatalf("批量访问中键 %s 不存在", key)
-			}
-		}
-		
-		t.Logf("批量访问方法1000个键时间: %v", batchTime)
-	})
 }
 
 // BenchmarkObjectAccess 对象访问性能基准测试
@@ -135,31 +110,17 @@ func BenchmarkObjectAccess(b *testing.B) {
 		}
 	})
 	
-	b.Run("OptimizedGetFast", func(b *testing.B) {
-		ClearKeyCache()
+	b.Run("OptimizedGet", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			key := fmt.Sprintf("key_%d", i%objSize)
-			node.GetFast(key)
-		}
-	})
-	
-	b.Run("BatchAccess", func(b *testing.B) {
-		keys := make([]string, 100)
-		for i := 0; i < 100; i++ {
-			keys[i] = fmt.Sprintf("key_%d", i)
-		}
-		
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			batchAccess := node.NewBatchAccess(keys)
-			batchAccess.GetAll()
+			node.Get(key)
 		}
 	})
 }
 
-// TestCacheEffectiveness 测试缓存效果
-func TestCacheEffectiveness(t *testing.T) {
+// TestGetPerformance 测试Get方法性能
+func TestGetPerformance(t *testing.T) {
 	const objSize = 1000
 	var builder strings.Builder
 	builder.WriteByte('{')
@@ -182,33 +143,24 @@ func TestCacheEffectiveness(t *testing.T) {
 	}
 	
 	node := FromBytesWithOptions(largeJSON, opts)
-	ClearKeyCache()
 	
-	// 第一次访问（冷缓存）
+	// 测试Get方法性能
 	start := time.Now()
 	for i := 0; i < 100; i++ {
 		key := fmt.Sprintf("key_%d", i)
-		node.GetFast(key)
+		value := node.Get(key)
+		if !value.Exists() {
+			t.Fatalf("键 %s 不存在", key)
+		}
+		intVal, err := value.Int()
+		if err != nil || intVal != int64(i) {
+			t.Fatalf("值不匹配，期望: %d，实际: %d", i, intVal)
+		}
 	}
-	coldTime := time.Since(start)
+	elapsed := time.Since(start)
 	
-	// 第二次访问（热缓存）
-	start = time.Now()
-	for i := 0; i < 100; i++ {
-		key := fmt.Sprintf("key_%d", i)
-		node.GetFast(key)
-	}
-	hotTime := time.Since(start)
-	
-	t.Logf("冷缓存访问时间: %v", coldTime)
-	t.Logf("热缓存访问时间: %v", hotTime)
-	
-	if hotTime > coldTime {
-		t.Log("缓存可能没有生效，或者对象太小缓存未启用")
-	} else {
-		speedup := float64(coldTime) / float64(hotTime)
-		t.Logf("缓存加速比: %.2fx", speedup)
-	}
+	t.Logf("100次Get操作时间: %v", elapsed)
+	t.Logf("平均每次Get操作: %v", elapsed/100)
 }
 
 // TestMemoryUsageOptimization 测试内存使用优化

@@ -9,6 +9,7 @@ import (
 	"unsafe"
 )
 
+
 const (
 	maxInt64U = uint64(9223372036854775807)  // 2^63-1
 	minInt64U = uint64(9223372036854775808)  // -(min int64) 的绝对值
@@ -940,6 +941,7 @@ func (n Node) Get(path string) Node {
 	}
 	return parseValueAtWithData(data, pos, n.end, n.expanded)
 }
+
 
 func (n Node) GetPath(path string) Node {
 	if len(n.raw) == 0 || len(path) == 0 {

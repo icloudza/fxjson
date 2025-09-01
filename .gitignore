@@ -2,3 +2,4 @@
 /vitepress/.vitepress/dist/
 .spec-workflow
 .DS_Store
+/.idea/
