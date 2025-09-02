@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="04d06bed-a45b-4a5d-b093-719720aef114" name="更改" comment="ci: 添加 GitHub Pages 部署工作流程&#10;&#10;- 新增 deploy.yml 文件，配置 VitePress站点构建和部署&#10;- 设置 GITHUB_TOKEN 权限，以允许部署到 GitHub Pages&#10;- 添加构建和部署两个 job，确保有序进行&#10;- 使用 actions/checkout、actions/setup-node 等官方动作&#10;- 配置环境变量和 artifact 上传" />
+    <list default="true" id="04d06bed-a45b-4a5d-b093-719720aef114" name="更改" comment="chore: 更新 .gitignore并添加新文件&#10;&#10;- 在 .gitignore 中添加 /.spec-workflow/ 目录&#10;- 新增 performance_optimize.go 文件&#10;- 更新其他多个文件的缓存信息" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -19,6 +19,11 @@
   </component>
   <component name="GOROOT" url="file://$USER_HOME$/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.6.darwin-arm64" />
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -87,7 +92,6 @@
     &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
     &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;/Users/cloudza/Desktop/Development/Go/fxjson&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
