@@ -37,7 +37,7 @@ export default defineConfig({
         {
           text: '开始使用',
           items: [
-            { text: '快速开始', link: '/guide/quick-start' },
+            { text: '5分钟快速上手', link: '/guide/quick-start' },
             { text: '安装配置', link: '/guide/installation' },
             { text: '基础概念', link: '/guide/concepts' }
           ]
@@ -60,70 +60,90 @@ export default defineConfig({
       ],
       '/api/': [
         {
-          text: '核心类型',
+          text: '快速索引',
           items: [
-            { text: 'Node', link: '/api/#node' },
-            { text: 'NodeType', link: '/api/#nodetype' }
+            { text: '核心解析函数', link: '/api/#核心解析函数' },
+            { text: '基础数据访问', link: '/api/#基础数据访问' },
+            { text: '类型转换方法', link: '/api/#类型转换方法' },
+            { text: '数组操作', link: '/api/#数组操作' },
+            { text: '对象操作', link: '/api/#对象操作' },
+            { text: '高级功能', link: '/api/#高级功能' }
           ]
         },
         {
-          text: '包级函数',
+          text: '解析和访问',
           items: [
-            { text: '解析函数', link: '/api/#解析函数' },
-            { text: '序列化函数', link: '/api/#序列化函数' },
-            { text: '解码函数', link: '/api/#解码函数' }
+            { text: 'FromString / FromBytes', link: '/api/#fromstring' },
+            { text: 'Get / GetPath', link: '/api/#get' },
+            { text: 'Index / Exists', link: '/api/#index' }
           ]
         },
         {
-          text: 'Node 方法',
-          collapsed: false,
+          text: '数据转换',
           items: [
-            { text: '访问方法', link: '/api/#访问方法' },
-            { text: '类型转换', link: '/api/#类型转换方法' },
-            { text: '便捷方法', link: '/api/#便捷方法带默认值' },
+            { text: '安全转换 (推荐)', link: '/api/#安全转换方法推荐' },
+            { text: '严格转换', link: '/api/#严格转换方法' },
+            { text: '切片转换', link: '/api/#toslice系列方法' }
+          ]
+        },
+        {
+          text: '遍历和检查',
+          items: [
+            { text: '数组遍历', link: '/api/#arrayforeach' },
+            { text: '对象遍历', link: '/api/#foreach' },
             { text: '类型检查', link: '/api/#类型检查方法' },
-            { text: '遍历方法', link: '/api/#遍历方法' },
-            { text: '数据转换', link: '/api/#数据转换方法' },
-            { text: '数据验证', link: '/api/#数据验证方法' },
-            { text: '类型信息', link: '/api/#类型信息方法' },
-            { text: '原始数据', link: '/api/#原始数据方法' },
-            { text: 'JSON序列化', link: '/api/#json序列化方法' },
-            { text: '字符串操作', link: '/api/#字符串操作方法' },
-            { text: '数组操作', link: '/api/#数组操作方法' },
-            { text: '对象操作', link: '/api/#对象操作方法' },
-            { text: '批量获取', link: '/api/#批量获取方法' },
-            { text: '查找和过滤', link: '/api/#查找和过滤方法' },
-            { text: '统计和分析', link: '/api/#统计和分析方法' },
-            { text: '比较和状态检查', link: '/api/#比较和状态检查方法' },
-            { text: '数字操作', link: '/api/#数字操作方法' },
-            { text: '高级查询', link: '/api/#高级查询方法' },
-            { text: '其他方法', link: '/api/#其他方法' }
+            { text: '深度遍历', link: '/api/#walk' }
           ]
         },
         {
-          text: '配置选项',
+          text: '验证和序列化',
           items: [
-            { text: 'ParseOptions', link: '/api/#parseoptions' },
-            { text: 'SerializeOptions', link: '/api/#serializeoptions' }
+            { text: '数据验证', link: '/api/#数据验证' },
+            { text: '结构体操作', link: '/api/#结构体操作' },
+            { text: '配置选项', link: '/api/#配置选项' }
           ]
         },
         {
-          text: '示例',
+          text: '使用指南',
           items: [
-            { text: '完整使用示例', link: '/api/#完整使用示例' },
-            { text: '性能相关', link: '/api/#性能相关' },
-            { text: '使用建议', link: '/api/#使用建议' }
+            { text: '性能特性', link: '/api/#性能特性' },
+            { text: '错误处理', link: '/api/#错误处理指南' },
+            { text: '最佳实践', link: '/api/#最佳实践' }
           ]
         }
       ],
       '/examples/': [
         {
-          text: '示例导航',
+          text: '基础示例',
           items: [
-            { text: '快速开始', link: '/examples/' }
+            { text: '用户信息解析', link: '/examples/#示例-1-用户信息解析' },
+            { text: '嵌套数据访问', link: '/examples/#示例-2-嵌套数据访问' }
           ]
         },
-        
+        {
+          text: '数组和对象',
+          items: [
+            { text: '商品列表处理', link: '/examples/#示例-3-商品列表处理' },
+            { text: '成绩统计分析', link: '/examples/#示例-4-成绩统计分析' },
+            { text: '部门员工统计', link: '/examples/#示例-5-部门员工统计' }
+          ]
+        },
+        {
+          text: 'API 处理',
+          items: [
+            { text: '分页数据处理', link: '/examples/#示例-6-分页数据处理' },
+            { text: '错误响应处理', link: '/examples/#示例-7-错误响应处理' },
+            { text: '配置文件解析', link: '/examples/#示例-8-应用配置管理' }
+          ]
+        },
+        {
+          text: '高级应用',
+          items: [
+            { text: '数据验证', link: '/examples/#示例-9-用户注册验证' },
+            { text: '性能优化', link: '/examples/#示例-10-大数据处理优化' },
+            { text: '微服务配置', link: '/examples/#示例-12-微服务配置中心' }
+          ]
+        }
       ],
       '/performance/': [
         {
