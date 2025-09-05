@@ -3,6 +3,7 @@ package fxjson
 import (
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -280,6 +281,42 @@ func (n Node) IsValidIPv6() bool {
 func (n Node) IsValidIP() bool {
 	return n.IsValidIPv4() || n.IsValidIPv6()
 }
+
+// IsValidJSON 验证 JSON 格式
+func (n Node) IsValidJSON() bool {
+	// 如果节点本身就是有效的JSON结构（对象、数组等），则直接返回true
+	if n.IsObject() || n.IsArray() || n.IsBool() || n.IsNumber() || n.IsNull() {
+		return true
+	}
+
+	// 对于字符串节点，检查其内容是否为有效JSON
+	if n.IsString() {
+		str, err := n.String()
+		if err != nil {
+			return false
+		}
+
+		// 空字符串不是有效的JSON
+		if len(str) == 0 {
+			return false
+		}
+
+		// 尝试解析JSON来验证格式
+		testNode := FromString(str)
+		return testNode.Exists()
+	}
+
+	return false
+}
+
+// isNumericString 检查字符串是否为有效数字
+func isNumericString(s string) bool {
+	_, err := strconv.ParseFloat(s, 64)
+	return err == nil
+}
+
+// ==================== 分组类型检查 ====================
+// 注意：IsScalar和IsContainer方法已存在于fxjson.go中
 
 // ==================== 字符串操作工具 ====================
 

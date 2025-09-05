@@ -3,3 +3,4 @@
 .spec-workflow
 .DS_Store
 /.idea/
+/examples/

@@ -9,7 +9,6 @@ import (
 	"unsafe"
 )
 
-
 const (
 	maxInt64U = uint64(9223372036854775807)  // 2^63-1
 	minInt64U = uint64(9223372036854775808)  // -(min int64) 的绝对值
@@ -361,20 +360,20 @@ const (
 type expandTask struct {
 	taskType expandTaskType
 	node     Node
-	result   *[]byte  // 用于存储结果
-	changed  *bool    // 用于标记是否有变化
-	parentID int      // 父任务ID，用于结果收集
+	result   *[]byte // 用于存储结果
+	changed  *bool   // 用于标记是否有变化
+	parentID int     // 父任务ID，用于结果收集
 }
 
 // expandNodeIterative 使用迭代方式展开节点，避免栈溢出
 func expandNodeIterative(rootNode Node) ([]byte, bool) {
 	// 使用栈来管理展开任务
 	stack := make([]expandTask, 0, 64) // 预分配容量避免频繁扩容
-	
+
 	// 结果存储
 	var result []byte
 	var changed bool
-	
+
 	// 推入根任务
 	stack = append(stack, expandTask{
 		taskType: expandTaskExpand,
@@ -382,39 +381,39 @@ func expandNodeIterative(rootNode Node) ([]byte, bool) {
 		result:   &result,
 		changed:  &changed,
 	})
-	
+
 	for len(stack) > 0 {
 		// 弹出任务
 		task := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
-		
+
 		switch task.taskType {
 		case expandTaskExpand:
 			data := task.node.getWorkingData()
-			
+
 			switch task.node.typ {
 			case 'o':
 				expandedObj, objChanged := expandObjectIterative(task.node, data)
 				*task.result = expandedObj
 				*task.changed = objChanged
-				
+
 			case 'a':
 				expandedArr, arrChanged := expandArrayIterative(task.node, data)
 				*task.result = expandedArr
 				*task.changed = arrChanged
-				
+
 			case 's':
 				expandedStr, strChanged := expandStringIterative(task.node, data)
 				*task.result = expandedStr
 				*task.changed = strChanged
-				
+
 			default:
 				*task.result = data[task.node.start:task.node.end]
 				*task.changed = false
 			}
 		}
 	}
-	
+
 	return result, changed
 }
 
@@ -437,7 +436,7 @@ func expandStringIterative(n Node, data []byte) ([]byte, bool) {
 		if !nestedNode.Exists() {
 			return data[n.start:n.end], false
 		}
-		
+
 		// 直接调用迭代版本，避免递归
 		nestedExpanded, _ := expandNodeIterative(nestedNode)
 		return nestedExpanded, true
@@ -500,7 +499,7 @@ func expandObjectIterative(n Node, data []byte) ([]byte, bool) {
 
 		// 解析值
 		valueNode := parseValueAt(data, pos, n.end)
-		
+
 		// 使用迭代方式展开值
 		expandedValue, valueChanged := expandNodeIterative(valueNode)
 		result.Write(expandedValue)
@@ -549,7 +548,7 @@ func expandArrayIterative(n Node, data []byte) ([]byte, bool) {
 
 		// 解析值
 		valueNode := parseValueAt(data, pos, n.end)
-		
+
 		// 使用迭代方式展开值
 		expandedValue, valueChanged := expandNodeIterative(valueNode)
 		result.Write(expandedValue)
@@ -785,6 +784,16 @@ func parseRootNode(data []byte) Node {
 
 // ===== From / 基本访问 =====
 
+// FromString 从JSON字符串创建Node，这是最常用的解析函数
+func FromString(s string) Node {
+	return FromBytes([]byte(s))
+}
+
+// FromStringWithOptions 使用指定选项从字符串解析JSON
+func FromStringWithOptions(s string, opts ParseOptions) Node {
+	return FromBytesWithOptions([]byte(s), opts)
+}
+
 // FromBytes 创建节点并智能展开嵌套的转义JSON
 func FromBytes(b []byte) Node {
 	return FromBytesWithOptions(b, DefaultParseOptions)
@@ -942,7 +951,6 @@ func (n Node) Get(path string) Node {
 	return parseValueAtWithData(data, pos, n.end, n.expanded)
 }
 
-
 func (n Node) GetPath(path string) Node {
 	if len(n.raw) == 0 || len(path) == 0 {
 		return Node{}
@@ -1048,7 +1056,7 @@ func findObjectField(data []byte, start int, end int, keyData *byte, keyStart in
 			if keyLen > 0 {
 				fieldBytes := data[fieldStart : fieldStart+keyLen]
 				keyBytes := unsafe.Slice((*byte)(unsafe.Add(unsafe.Pointer(keyData), keyStart)), keyLen)
-				
+
 				// 对于较长的键，使用8字节块比较
 				if keyLen >= 8 {
 					// 比较前8字节
@@ -2224,7 +2232,7 @@ func (n Node) Len() int {
 	return 0
 }
 
-func (n Node) Keys() [][]byte {
+func (n Node) KeysBytes() [][]byte {
 	if n.typ != 'o' {
 		return nil
 	}
@@ -3822,6 +3830,11 @@ func (n Node) GetAllKeys() []string {
 		return true
 	})
 	return keys
+}
+
+// Keys 返回对象的所有键名（符合文档API）
+func (n Node) Keys() []string {
+	return n.GetAllKeys()
 }
 
 // GetAllValues 返回数组的所有元素节点
