@@ -81,7 +81,7 @@ export default defineConfig({
         {
           text: '数据转换',
           items: [
-            { text: '安全转换 (推荐)', link: '/api/#安全转换方法推荐' },
+            { text: '安全转换 (推荐)', link: '/api/#安全转换方法-推荐' },
             { text: '严格转换', link: '/api/#严格转换方法' },
             { text: '切片转换', link: '/api/#toslice系列方法' }
           ]
