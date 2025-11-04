@@ -176,16 +176,29 @@ active := node.Get("active").BoolOr(false)
 verified := node.Get("verified").BoolOr(false)
 ```
 
+#### UintOr()
+```go
+func (n Node) UintOr(defaultValue uint64) uint64
+```
+
+获取无符号整数值，失败时返回默认值。
+
+```go
+count := node.Get("count").UintOr(0)
+id := node.Get("id").UintOr(0)
+```
+
 ### 严格转换方法
 
 这些方法返回错误，适合需要明确错误处理的场景。
 
-#### String() / Int() / Float() / Bool()
+#### String() / Int() / Float() / Bool() / Uint()
 ```go
 func (n Node) String() (string, error)
-func (n Node) Int() (int64, error) 
+func (n Node) Int() (int64, error)
 func (n Node) Float() (float64, error)
 func (n Node) Bool() (bool, error)
+func (n Node) Uint() (uint64, error)
 ```
 
 ```go
@@ -198,9 +211,35 @@ if err != nil {
 
 age, err := node.Get("age").Int()
 if err != nil {
-    log.Printf("获取年龄失败: %v", err) 
+    log.Printf("获取年龄失败: %v", err)
     return
 }
+
+// 无符号整数
+count, err := node.Get("count").Uint()
+if err != nil {
+    log.Printf("获取计数失败: %v", err)
+    return
+}
+```
+
+#### 特殊转换方法
+
+##### NumStr() / FloatString()
+```go
+func (n Node) NumStr() (string, error)
+func (n Node) FloatString() (string, error)
+```
+
+获取数字的字符串表示形式，保留原始格式。
+
+```go
+json := `{"price": 99.99, "count": 42}`
+node := fxjson.FromString(json)
+
+// 获取数字的字符串表示
+priceStr, _ := node.Get("price").NumStr()   // "99.99"
+countStr, _ := node.Get("count").NumStr()   // "42"
 ```
 
 ---
@@ -391,6 +430,52 @@ if node.Get("optional_field").Exists() {
 }
 ```
 
+### 原始数据访问
+
+#### Raw() / RawString()
+```go
+func (n Node) Raw() []byte
+func (n Node) RawString() (string, error)
+```
+
+获取节点的原始 JSON 数据。
+
+```go
+json := `{"user": {"name": "张三", "age": 30}}`
+node := fxjson.FromString(json)
+
+// 获取原始字节
+userRaw := node.Get("user").Raw()
+fmt.Printf("原始数据: %s\n", userRaw)  // {"name": "张三", "age": 30}
+
+// 获取原始字符串
+userStr, _ := node.Get("user").RawString()
+```
+
+#### Type() / Kind()
+```go
+func (n Node) Type() byte
+func (n Node) Kind() NodeType
+```
+
+获取节点的类型标识。
+
+```go
+node := fxjson.FromString(`{"name": "张三"}`)
+
+typ := node.Type()        // 返回 'o' (对象)
+kind := node.Kind()       // 返回 TypeObject
+
+switch kind {
+case fxjson.TypeObject:
+    fmt.Println("这是一个对象")
+case fxjson.TypeArray:
+    fmt.Println("这是一个数组")
+case fxjson.TypeString:
+    fmt.Println("这是一个字符串")
+}
+```
+
 ---
 
 ## 高级功能
@@ -451,19 +536,36 @@ if score.InRange(0, 100) {
 }
 ```
 
-### 结构体操作
+### 结构体操作与序列化
 
-#### Marshal() / FastMarshal()
+#### 序列化方法
 ```go
-func Marshal(v interface{}) ([]byte, error)          // 标准序列化
-func FastMarshal(v interface{}) ([]byte, error)     // 高性能序列化
+func Marshal(v interface{}) ([]byte, error)                     // 标准序列化
+func FastMarshal(v interface{}) []byte                          // 高性能序列化
+func MarshalIndent(v interface{}, prefix, indent string) ([]byte, error)  // 美化序列化
+func MarshalWithOptions(v interface{}, opts SerializeOptions) ([]byte, error)  // 带选项序列化
+func MarshalToString(v interface{}) (string, error)             // 序列化为字符串
+func MarshalToStringWithOptions(v interface{}, opts SerializeOptions) (string, error)
 ```
 
-#### DecodeStruct()
-```go  
-func DecodeStruct(data []byte, v interface{}) error  // 解码到结构体
+#### Node 序列化方法
+```go
+func (n Node) ToJSON() (string, error)                          // 转为 JSON 字符串
+func (n Node) ToJSONIndent(prefix, indent string) (string, error)  // 美化 JSON
+func (n Node) ToJSONWithOptions(opts SerializeOptions) (string, error)  // 带选项转换
+func (n Node) ToJSONBytes() ([]byte, error)                     // 转为 JSON 字节
+func (n Node) ToJSONBytesWithOptions(opts SerializeOptions) ([]byte, error)
+func (n Node) ToJSONFast() string                               // 快速转换
 ```
 
+#### 反序列化方法
+```go
+func DecodeStruct(data []byte, v interface{}) error             // 解码到结构体
+func DecodeStructFast(data []byte, v interface{}) error         // 快速解码
+func (n Node) Decode(v any) error                               // Node 解码
+```
+
+**基础示例**：
 ```go
 // 定义结构体
 type User struct {
@@ -474,17 +576,24 @@ type User struct {
 
 // 序列化
 user := User{Name: "张三", Age: 30, Active: true}
-jsonBytes, err := fxjson.FastMarshal(user)
-if err == nil {
-    fmt.Printf("JSON: %s\n", jsonBytes)
-}
+jsonBytes := fxjson.FastMarshal(user)
+fmt.Printf("JSON: %s\n", jsonBytes)
+
+// 美化序列化
+prettyJSON, _ := fxjson.MarshalIndent(user, "", "  ")
+fmt.Printf("美化 JSON:\n%s\n", prettyJSON)
 
 // 反序列化
 var newUser User
-err = fxjson.DecodeStruct(jsonBytes, &newUser)
+err := fxjson.DecodeStruct(jsonBytes, &newUser)
 if err == nil {
     fmt.Printf("用户: %+v\n", newUser)
 }
+
+// Node 转 JSON
+node := fxjson.FromString(`{"id": 1, "name": "test"}`)
+jsonStr, _ := node.ToJSON()
+fmt.Printf("JSON: %s\n", jsonStr)
 ```
 
 ### 深度遍历

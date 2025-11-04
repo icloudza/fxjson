@@ -1,37 +1,170 @@
-# 序列化与反序列化
+# 序列化功能指南
 
-FxJSON 提供了强大的序列化功能，支持从 Go 结构体生成 JSON，以及从 JSON 解析到结构体。本节详细介绍各种序列化场景。
+FxJSON 提供了强大而灵活的序列化功能，支持将 Go 数据结构转换为 JSON 字符串。不仅支持基础的序列化，还包括批量序列化、流式序列化、性能优化等高级特性。
 
-## 结构体序列化为 JSON
+## 目录
 
-### 基础序列化
+- [基础序列化](#基础序列化)
+- [快速序列化](#快速序列化)
+- [类型专用序列化](#类型专用序列化)
+- [批量序列化](#批量序列化)
+- [流式序列化](#流式序列化)
+- [序列化选项](#序列化选项)
+- [���能优化](#性能优化)
+- [实际应用场景](#实际应用场景)
+
+## 基础序列化
+
+### Marshal()
+
+最基础的序列化方法，支持所有 Go 数据类型。
 
 ```go
+func Marshal(v interface{}) ([]byte, error)
+```
+
+**基本用法**：
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/icloudza/fxjson"
+)
+
 type User struct {
-    ID    int64  `json:"id"`
-    Name  string `json:"name"`
-    Email string `json:"email"`
-    Age   int    `json:"age"`
+    ID       int      `json:"id"`
+    Name     string   `json:"name"`
+    Email    string   `json:"email"`
+    Tags     []string `json:"tags,omitempty"`
+    Active   bool     `json:"active"`
+    Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
-func basicSerialization() {
+func main() {
     user := User{
-        ID:    1,
-        Name:  "张三",
-        Email: "zhangsan@example.com",
-        Age:   30,
+        ID:     1001,
+        Name:   "张三",
+        Email:  "zhangsan@example.com",
+        Tags:   []string{"golang", "developer"},
+        Active: true,
+        Metadata: map[string]interface{}{
+            "level": "senior",
+            "score": 95.5,
+        },
     }
 
-    // 标准序列化
-    jsonBytes, err := fxjson.Marshal(user)
+    // 序列化为 JSON
+    data, err := fxjson.Marshal(user)
     if err != nil {
         panic(err)
     }
-    fmt.Printf("JSON: %s\n", jsonBytes)
 
-    // 高性能序列化（推荐）
-    fastJSON := fxjson.FastMarshal(user)
-    fmt.Printf("Fast JSON: %s\n", fastJSON)
+    fmt.Printf("JSON: %s\n", data)
+    // 输出: {"id":1001,"name":"张三","email":"zhangsan@example.com","tags":["golang","developer"],"active":true,"metadata":{"level":"senior","score":95.5}}
+}
+```
+
+## 快速序列化
+
+### MarshalStructFast()
+
+高性能的结构体序列化，比标准方法快 3-5 倍。
+
+```go
+func MarshalStructFast(v interface{}) []byte
+```
+
+**特点**：
+- 返回字节数组而非错误（内部处理错误）
+- 性能优化，减少内存分配
+- 自动处理空值和默认值
+
+```go
+func main() {
+    user := User{
+        ID:     1001,
+        Name:   "张三",
+        Email:  "zhangsan@example.com",
+        Active: true,
+    }
+
+    // 快速序列化（无需错误处理）
+    data := fxjson.MarshalStructFast(user)
+    fmt.Printf("Fast JSON: %s\n", data)
+
+    // 如果需要错误信息，可以使用 MarshalStruct
+    data, err := fxjson.MarshalStruct(user)
+    if err != nil {
+        log.Printf("序列化错误: %v", err)
+    }
+}
+```
+
+## 类型专用序列化
+
+### MarshalSlice()
+
+专门用于切片/数组序列化的优化方法。
+
+```go
+func MarshalSlice(v interface{}) ([]byte, error)
+```
+
+```go
+func main() {
+    // 字符串切片
+    names := []string{"张三", "李四", "王五"}
+    data, _ := fxjson.MarshalSlice(names)
+    fmt.Printf("Names: %s\n", data)
+
+    // 结构体切片
+    users := []User{
+        {ID: 1, Name: "张三", Active: true},
+        {ID: 2, Name: "李四", Active: false},
+    }
+    data, _ = fxjson.MarshalSlice(users)
+    fmt.Printf("Users: %s\n", data)
+
+    // 数字切片
+    scores := []float64{95.5, 87.0, 92.5}
+    data, _ = fxjson.MarshalSlice(scores)
+    fmt.Printf("Scores: %s\n", data)
+}
+```
+
+### MarshalMap()
+
+专门用于 Map 序列化的优化方法。
+
+```go
+func MarshalMap(v interface{}) ([]byte, error)
+```
+
+```go
+func main() {
+    // 简单 Map
+    config := map[string]string{
+        "host": "localhost",
+        "port": "8080",
+        "env":  "production",
+    }
+    data, _ := fxjson.MarshalMap(config)
+    fmt.Printf("Config: %s\n", data)
+
+    // 复杂 Map
+    dataMap := map[string]interface{}{
+        "count":    100,
+        "active":   true,
+        "users":    []string{"user1", "user2"},
+        "settings": map[string]interface{}{
+            "cache":  true,
+            "debug":  false,
+            "limit":  1000,
+        },
+    }
+    data, _ = fxjson.MarshalMap(dataMap)
+    fmt.Printf("Data: %s\n", data)
 }
 ```
 
@@ -133,6 +266,208 @@ func nestedSerialization() {
 }
 ```
 
+## 序列化到字符串
+
+### MarshalToString()
+
+直接序列化为字符串，无需类型转换。
+
+```go
+func MarshalToString(v interface{}) (string, error)
+func MarshalToStringWithOptions(v interface{}, opts SerializeOptions) (string, error)
+```
+
+```go
+func stringSerializationExample() {
+    user := User{
+        ID:    1,
+        Name:  "张三",
+        Email: "zhang@example.com",
+        Age:   30,
+    }
+
+    // 直接序列化为字符串
+    jsonStr, err := fxjson.MarshalToString(user)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("JSON 字符串: %s\n", jsonStr)
+
+    // 带选项序列化为字符串
+    opts := fxjson.SerializeOptions{
+        Indent:     "  ",
+        SortKeys:   true,
+        EscapeHTML: false,
+    }
+    prettyStr, _ := fxjson.MarshalToStringWithOptions(user, opts)
+    fmt.Printf("美化字符串:\n%s\n", prettyStr)
+}
+```
+
+## 流式序列化到 Writer
+
+### MarshalToWriter()
+
+直接序列化到 Writer，避免中间缓冲区，节省内存。
+
+```go
+func MarshalToWriter(v interface{}, writer func([]byte) error) error
+func MarshalToWriterWithOptions(v interface{}, writer func([]byte) error, opts SerializeOptions) error
+```
+
+```go
+func writerSerializationExample() {
+    users := []User{
+        {ID: 1, Name: "张三", Email: "zhang@example.com", Age: 30},
+        {ID: 2, Name: "李四", Email: "li@example.com", Age: 25},
+        {ID: 3, Name: "王五", Email: "wang@example.com", Age: 35},
+    }
+
+    // 写入文件
+    file, err := os.Create("users.json")
+    if err != nil {
+        panic(err)
+    }
+    defer file.Close()
+
+    // 流式写入
+    err = fxjson.MarshalToWriter(users, func(data []byte) error {
+        _, err := file.Write(data)
+        return err
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println("数据已写入 users.json")
+}
+
+func httpResponseExample() {
+    http.HandleFunc("/api/users", func(w http.ResponseWriter, r *http.Request) {
+        users := []User{
+            {ID: 1, Name: "张三", Email: "zhang@example.com", Age: 30},
+            {ID: 2, Name: "李四", Email: "li@example.com", Age: 25},
+        }
+
+        w.Header().Set("Content-Type", "application/json")
+
+        // 直接流式写入 HTTP 响应
+        err := fxjson.MarshalToWriter(users, func(data []byte) error {
+            _, err := w.Write(data)
+            return err
+        })
+
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+        }
+    })
+}
+```
+
+## 特殊类型序列化
+
+### 时间序列化
+
+```go
+func MarshalTime(t time.Time) []byte
+func MarshalTimeUnix(t time.Time) []byte
+```
+
+```go
+func timeSerializationExample() {
+    now := time.Now()
+
+    // 标准 RFC3339 格式
+    timeJSON := fxjson.MarshalTime(now)
+    fmt.Printf("时间(RFC3339): %s\n", timeJSON)
+    // 输出: "2024-01-15T10:30:00Z"
+
+    // Unix 时间戳
+    unixJSON := fxjson.MarshalTimeUnix(now)
+    fmt.Printf("时间(Unix): %s\n", unixJSON)
+    // 输出: 1705315800
+
+    // 在结构体中使用
+    type Event struct {
+        ID        int       `json:"id"`
+        Name      string    `json:"name"`
+        CreatedAt time.Time `json:"created_at"`
+    }
+
+    event := Event{
+        ID:        1,
+        Name:      "技术分享会",
+        CreatedAt: now,
+    }
+
+    eventJSON := fxjson.FastMarshal(event)
+    fmt.Printf("事件: %s\n", eventJSON)
+}
+```
+
+### 时间段序列化
+
+```go
+func MarshalDuration(d time.Duration) []byte
+```
+
+```go
+func durationSerializationExample() {
+    duration := 2*time.Hour + 30*time.Minute
+
+    // 序列化为纳秒数
+    durationJSON := fxjson.MarshalDuration(duration)
+    fmt.Printf("时长: %s\n", durationJSON)
+    // 输出: 9000000000000
+
+    // 在结构体中使用
+    type Task struct {
+        Name     string        `json:"name"`
+        Duration time.Duration `json:"duration_ns"`
+    }
+
+    task := Task{
+        Name:     "数据处理",
+        Duration: duration,
+    }
+
+    taskJSON := fxjson.FastMarshal(task)
+    fmt.Printf("任务: %s\n", taskJSON)
+}
+```
+
+### 二进制数据序列化
+
+```go
+func MarshalBinary(data []byte) []byte
+```
+
+```go
+func binarySerializationExample() {
+    // 原始二进制数据
+    binaryData := []byte{0x48, 0x65, 0x6c, 0x6c, 0x6f}  // "Hello"
+
+    // 序列化为 Base64 编码的 JSON 字符串
+    binaryJSON := fxjson.MarshalBinary(binaryData)
+    fmt.Printf("二进制数据: %s\n", binaryJSON)
+    // 输出: "SGVsbG8="
+
+    // 在结构体中使用
+    type FileData struct {
+        Name    string `json:"name"`
+        Content []byte `json:"content"`
+    }
+
+    fileData := FileData{
+        Name:    "document.pdf",
+        Content: binaryData,
+    }
+
+    fileJSON := fxjson.FastMarshal(fileData)
+    fmt.Printf("文件数据: %s\n", fileJSON)
+}
+```
+
 ## 批量序列化
 
 ### 数组序列化
@@ -146,14 +481,16 @@ func arraySerialization() {
     }
 
     // 标准数组序列化
-    jsonData, err := fxjson.FastMarshal(users)
-    if err != nil {
-        panic(err)
-    }
+    jsonData := fxjson.FastMarshal(users)
+    fmt.Printf("JSON 数据: %s\n", jsonData)
 
     // 美化输出
     prettyData, _ := fxjson.MarshalIndent(users, "", "  ")
     fmt.Printf("用户列表:\n%s\n", prettyData)
+
+    // 序列化为字符串
+    jsonStr, _ := fxjson.MarshalToString(users)
+    fmt.Printf("字符串格式: %s\n", jsonStr)
 }
 ```
 
