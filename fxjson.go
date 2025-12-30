@@ -15,6 +15,7 @@ const (
 	maxUint64 = uint64(18446744073709551615) // 2^64-1
 )
 
+// Node 节点结构体!
 type Node struct {
 	raw      []byte
 	start    int
